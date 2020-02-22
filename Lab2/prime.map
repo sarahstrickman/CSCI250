@@ -1,0 +1,30 @@
+Load map
+========
+
+Module:  prime.obj
+ Text segment:  308 bytes, load point 0x00400000
+ Data segment:  8 bytes, load point 0x10000000
+ Symbols:
+            Name Section Mode    Value
+        is_prime   Text   R   0x00400098
+     find_finish   Text   R   0x0040006c
+       not_prime   Text   R   0x00400064
+             MAX          A   0x00000066
+             MIN          A   0x00000003
+  finish_unprime   Text   R   0x004000ec
+         newline   Data   R   0x10000000
+       find_loop   Text   R   0x00400050
+    finish_prime   Text   R   0x004000e8
+    PRINT_STRING          A   0x00000004
+            main   Text   RG  0x00400000
+   is_prime_loop   Text   R   0x004000d0
+     find_primes   Text   R   0x00400018
+    print_number   Text   R   0x00400118
+       PRINT_INT          A   0x00000001
+
+Module:  r2k_startup.obj
+ Text segment:  36 bytes, load point 0x00400134
+ Symbols:
+            Name Section Mode    Value
+       SYS_EXIT2          A   0x00000011
+  __r2k__entry__   Text   RG  0x00400138

@@ -1,0 +1,147 @@
+Load map
+========
+
+Module:  tents.obj
+ Text segment:  4148 bytes, load point 0x00400000
+ Data segment:  952 bytes, load point 0x10000000
+ Symbols:
+                          Name Section Mode    Value
+         initialize_bytes_loop   Text   R   0x00400f00
+                  NEWLINE_CHAR          A   0x0000000a
+           strlen_nul_not_read   Text   R   0x00400e84
+           rowcol_amt_row_loop   Text   R   0x00400a4c
+            validate_boardsize   Text   R   0x00400fec
+              initialize_bytes   Text   R   0x00400ef4
+             print_board_done2   Text   R   0x00400d30
+     print_board_col_nums_done   Text   R   0x00400de0
+  populate_board_content_grass   Text   R   0x00400b9c
+                     solve_top   Text   R   0x0040039c
+               MAX_BUFFER_SIZE          A   0x00000014
+         initialize_words_done   Text   R   0x00400ee8
+          populate_board_loop1   Text   R   0x00400b24
+                        strlen   Text   R   0x00400e34
+          populate_board_loop2   Text   R   0x00400b70
+         error_msg_illegal_sum   Data   R   0x1000031b
+          print_board_col_nums   Text   R   0x00400db8
+      print_board_border_done2   Text   R   0x00400d98
+              print_board_exit   Text   R   0x00400e08
+           rowcol_amt_col_loop   Text   R   0x00400a8c
+         board_border_unit_mid   Data   R   0x100003a4
+        populate_max_sums_loop   Text   R   0x00400f84
+                      TREE_BOT          A   0x00000006
+                         board   Data   R   0x10000000
+      print_board_content_tent   Text   R   0x00400d0c
+        rowcol_amt_no_tent_col   Text   R   0x00400aa4
+   error_msg_impossible_puzzle   Data   R   0x1000036d
+                  solve_bottom   Text   R   0x0040053c
+            is_last_tree_false   Text   R   0x004009dc
+               print_board_err   Text   R   0x00400df4
+               space_valid_3_1   Text   R   0x00400868
+               space_valid_3_2   Text   R   0x004008a8
+             print_board_loop2   Text   R   0x00400c9c
+                    solve_done   Text   R   0x00400644
+               space_valid_3_3   Text   R   0x004008e0
+                      READ_INT          A   0x00000005
+          board_contents_grass   Data   R   0x100003ad
+           print_board_success   Text   R   0x00400dec
+                   solve_done2   Text   R   0x00400620
+            solve_top_dead_end   Text   R   0x00400430
+                populate_board   Text   R   0x00400ae8
+         board_border_unit_beg   Data   R   0x100003a1
+        error_msg_illegal_char   Data   R   0x10000341
+             is_last_tree_loop   Text   R   0x0040099c
+      print_board_border_loop2   Text   R   0x00400d7c
+           board_title_initial   Data   R   0x10000381
+            populate_board_err   Text   R   0x00400bc4
+         populate_max_sums_err   Text   R   0x00400fac
+              is_solution_none   Text   R   0x00400200
+   populate_board_content_done   Text   R   0x00400ba8
+         solve_bottom_dead_end   Text   R   0x004005d4
+                     TENT_CHAR          A   0x00000041
+         board_border_unit_end   Data   R   0x100003a7
+                    space_char   Data   R   0x100002b6
+                   strlen_done   Text   R   0x00400e94
+                    TREE_EMPTY          A   0x00000002
+           solve_left_dead_end   Text   R   0x00400360
+                          TENT          A   0x00000007
+                    rowcol_amt   Text   R   0x004009ec
+                solve_solution   Text   R   0x0040062c
+       print_board_border_loop   Text   R   0x00400c48
+                         solve   Text   R   0x00400240
+                        colMax   Data   R   0x10000270
+         initialize_bytes_done   Text   R   0x00400f14
+              print_board_loop   Text   R   0x00400c84
+           tents_banner_string   Data   R   0x100002b8
+                   solve_loop1   Text   R   0x004002b0
+           rowcol_amt_row_done   Text   R   0x00400a70
+                   solve_loop2   Text   R   0x004002b8
+      print_board_content_done   Text   R   0x00400d14
+                 solve_invalid   Text   R   0x0040063c
+              EMPTY_SPACE_CHAR          A   0x0000002e
+                  newline_char   Data   R   0x100002b4
+                MIN_BOARD_SIZE          A   0x00000002
+                    TREE_RIGHT          A   0x00000005
+                        buffer   Data   R   0x100002a0
+         initialize_words_loop   Text   R   0x00400ed4
+                  is_last_tree   Text   R   0x00400950
+                    solve_left   Text   R   0x004002cc
+          solve_right_dead_end   Text   R   0x00400500
+                   strlen_exit   Text   R   0x00400e9c
+             space_valid_false   Text   R   0x00400920
+                   solve_valid   Text   R   0x00400634
+                  PRINT_STRING          A   0x00000004
+                   solve_right   Text   R   0x0040046c
+           rowcol_amt_col_done   Text   R   0x00400abc
+                          main   Text   RG  0x00400000
+               space_valid_1_1   Text   R   0x00400734
+               space_valid_1_2   Text   R   0x0040077c
+                      TREE_TOP          A   0x00000003
+               space_valid_1_3   Text   R   0x004007b4
+           board_contents_tree   Data   R   0x100003b3
+        populate_max_sums_done   Text   R   0x00400fc0
+          error_msg_board_size   Data   R   0x100002f4
+                   space_valid   Text   R   0x00400670
+             populate_max_sums   Text   R   0x00400f20
+                     TREE_CHAR          A   0x00000054
+     print_board_content_grass   Text   R   0x00400cfc
+                    SPACE_CHAR          A   0x00000020
+           board_contents_side   Data   R   0x100003aa
+              solve_skip_space   Text   R   0x00400614
+             board_title_final   Data   R   0x10000392
+                     main_done   Text   R   0x00400198
+                   is_solution   Text   R   0x004001c4
+                   print_board   Text   R   0x00400c08
+   populate_board_content_tree   Text   R   0x00400b90
+                TERMINATE_PGRM          A   0x0000000a
+             is_last_tree_done   Text   R   0x004009e0
+        rowcol_amt_no_tent_row   Text   R   0x00400a64
+                     TREE_LEFT          A   0x00000004
+                        rowMax   Data   R   0x10000240
+          populate_board_done1   Text   R   0x00400bd8
+          populate_board_done2   Text   R   0x00400bb8
+              space_valid_done   Text   R   0x00400924
+                   EMPTY_SPACE          A   0x00000001
+      validate_boardsize_false   Text   R   0x00401014
+                   strlen_loop   Text   R   0x00400e6c
+                     READ_CHAR          A   0x0000000c
+       print_board_border_done   Text   R   0x00400c64
+           board_contents_tent   Data   R   0x100003b0
+              is_solution_done   Text   R   0x00400214
+      print_board_content_tree   Text   R   0x00400d04
+       validate_boardsize_done   Text   R   0x00401028
+               space_valid_2_1   Text   R   0x004007f0
+                   READ_STRING          A   0x00000008
+               space_valid_2_3   Text   R   0x0040082c
+               strlen_nul_read   Text   R   0x00400e7c
+                     PRINT_INT          A   0x00000001
+              print_board_done   Text   R   0x00400d68
+                    PRINT_CHAR          A   0x0000000b
+              initialize_words   Text   R   0x00400ec8
+                MAX_BOARD_SIZE          A   0x0000000c
+
+Module:  r2k_startup.obj
+ Text segment:  36 bytes, load point 0x00401034
+ Symbols:
+                          Name Section Mode    Value
+                     SYS_EXIT2          A   0x00000011
+                __r2k__entry__   Text   RG  0x00401038

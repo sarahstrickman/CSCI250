@@ -1,0 +1,6 @@
+
+******************
+**     TENTS    **
+******************
+
+Illegal board character, Tents terminating

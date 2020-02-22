@@ -1,0 +1,158 @@
+   1 0000               # File:		traverse_tree.asm
+   2 0000               # Author:	K. Reek
+   3 0000               # Contributors:	P. White,
+   4 0000               #		W. Carithers,
+   5 0000               #		Sarah Strickman
+   6 0000               #
+   7 0000               # Description:	Binary tree traversal functions.
+   8 0000               #
+   9 0000               # Revisions:	$Log$
+  10 0000               
+  11 0000               
+  12 0000               # CONSTANTS
+  13 0000               #
+  14 0000               
+  15 0000               # traversal codes
+  16 0000               PRE_ORDER  = 0
+  17 0000               IN_ORDER   = 1
+  18 0000               POST_ORDER = 2
+  19 0000               
+  20 0000               	.text			# this is program code
+  21 0000               	.align 2		# instructions must be on word boundaries
+  22 0000               
+  23 0000               #***** BEGIN STUDENT CODE BLOCK 3 *****************************
+  24 0000               #
+  25 0000               # Put your traverse_tree subroutine here.
+  26 0000               #
+  27 0000               
+  28 0000               # syscall codes
+  29 0000               PRINT_INT = 1
+  30 0000               PRINT_STRING = 4
+  31 0000               
+  32 0000                       .globl  traverse_tree
+  33 0000               
+  34 0000               #
+  35 0000               # Name:         traverse_tree
+  36 0000               #
+  37 0000               # Description:  Based on a parameter, determine the traversal type to perform.
+  38 0000               #               Delegate this responsibility to a different function.
+  39 0000               #
+  40 0000               # Arguments:    a0: address of the tree node
+  41 0000               #               a1: address of the function that will process all of the nodes 
+  42 0000               #                   in the tree
+  43 0000               #               a2: constant that specifies what type of traversal to perform
+  44 0000               #
+  45 0000               # Returns:      none
+  46 0000               #
+  47 0000               traverse_tree:
+  48 0000 23BDFFD8	        addi    $sp, $sp, -40                   # move stack pointer
+  49 0004 AFBF0020	        sw      $ra, 32($sp)                    # store ra
+  50 0008 AFB7001C	        sw      $s7, 28($sp)                    # store s registers
+  51 000c AFB60018	        sw      $s6, 24($sp)
+  52 0010 AFB50014	        sw      $s5, 20($sp)
+  53 0014 AFB40010	        sw      $s4, 16($sp)
+  54 0018 AFB3000C	        sw      $s3, 12($sp)
+  55 001c AFB20008	        sw      $s2, 8($sp)
+  56 0020 AFB10004	        sw      $s1, 4($sp)
+  57 0024 AFB00000	        sw      $s0, 0($sp)
+  58 0028                       
+  59 0028 00808020	        add     $s0, $a0, $zero                 # keep track of args in
+  60 002c 00A08820	        add     $s1, $a1, $zero                 # s registers
+  61 0030 00C09020	        add     $s2, $a2, $zero
+  62 0034               
+  63 0034 1200001C	        beq     $s0, $zero, done_recursion      # if s0 points to null, don't 
+  64 0038                                                               # do anything. (base case is
+  65 0038                                                               # the same for all traversal
+  66 0038                                                               # orders)
+  67 0038               
+  68 0038 34080000	        li      $t0, PRE_ORDER                  # jump to the traversal method
+  69 003c 34090001	        li      $t1, IN_ORDER                   # specified by a0
+  70 0040 340A0002	        li      $t2, POST_ORDER
+  71 0044 12480003	        beq     $s2, $t0, traverse_pre_order
+  72 0048 12490009	        beq     $s2, $t1, traverse_in_order
+  73 004c 124A000F	        beq     $s2, $t2, traverse_post_order
+  74 0050 0800002A	        j       done_recursion                  # order specification is invalid
+  75 0054               
+  76 0054               # if a2 is 0: traverse pre-order
+  77 0054               traverse_pre_order:
+  78 0054               
+  79 0054                       # PROCESS VALUE
+  80 0054 02002020	        add     $a0, $s0, $zero                 # set a0 for processing
+  81 0058 0220F809	        jalr    $s1                             # process a0
+  82 005c               
+  83 005c                       # TRAVERSE LEFT
+  84 005c 8E040004	        lw      $a0, 4($s0)                     # 4(s0) points to left branch
+  85 0060 0C000000	        jal traverse_tree
+  86 0064               
+  87 0064                       # TRAVERSE RIGHT
+  88 0064 8E040008	        lw      $a0, 8($s0)                     # 8(s0) points to right branch
+  89 0068 0C000000	        jal traverse_tree
+  90 006c               
+  91 006c 0800002A	        j done_recursion
+  92 0070               
+  93 0070               # if a2 is 1: traverse in-order
+  94 0070               traverse_in_order:
+  95 0070               
+  96 0070                       # TRAVERSE LEFT
+  97 0070 8E040004	        lw      $a0, 4($s0)                     # 4(s0) points to left branch
+  98 0074 0C000000	        jal traverse_tree
+  99 0078               
+ 100 0078                       # PROCESS VALUE
+ 101 0078 02002020	        add     $a0, $s0, $zero                 # set a0 for processing 
+ 102 007c 0220F809	        jalr    $s1                             # process a
+ 103 0080               
+ 104 0080                       # TRAVERSE RIGHT
+ 105 0080 8E040008	        lw      $a0, 8($s0)                     # 8(s0) points to right branch
+ 106 0084 0C000000	        jal traverse_tree
+ 107 0088               
+ 108 0088 0800002A	        j done_recursion
+ 109 008c               
+ 110 008c               # if a2 is 2: traverse post-order
+ 111 008c               traverse_post_order:
+ 112 008c               
+ 113 008c                       # TRAVERSE LEFT
+ 114 008c 8E040004	        lw      $a0, 4($s0)                     # 4(s0) points to left branch
+ 115 0090 0C000000	        jal traverse_tree
+ 116 0094               
+ 117 0094                       # TRAVERSE RIGHT
+ 118 0094 8E040008	        lw      $a0, 8($s0)                     # 8(s0) points to right branch
+ 119 0098 0C000000	        jal traverse_tree
+ 120 009c               
+ 121 009c                       # PROCESS VALUE
+ 122 009c 02002020	        add     $a0, $s0, $zero                 # set a0 for processing 
+ 123 00a0 0220F809	        jalr    $s1                             # process a0
+ 124 00a4               
+ 125 00a4 0800002A	        j done_recursion
+ 126 00a8               
+ 127 00a8               
+ 128 00a8               done_recursion:
+ 129 00a8 02002020	        add     $a0, $s0, $zero                 # restore a0, a1, and a2
+ 130 00ac 02202820	        add     $a1, $s1, $zero                 # to their original values
+ 131 00b0 00C03020	        add     $a2, $a2, $zero
+ 132 00b4               
+ 133 00b4 8FB00000	        lw      $s0, 0($sp)                     # restore s registers
+ 134 00b8 8FB10004	        lw      $s1, 4($sp)
+ 135 00bc 8FB20008	        lw      $s2, 8($sp)
+ 136 00c0 8FB3000C	        lw      $s3, 12($sp)
+ 137 00c4 8FB40010	        lw      $s4, 16($sp)
+ 138 00c8 8FB50014	        lw      $s5, 20($sp)
+ 139 00cc 8FB60018	        lw      $s6, 24($sp)
+ 140 00d0 8FB7001C	        lw      $s7, 28($sp)
+ 141 00d4 8FBF0020	        lw      $ra, 32($sp)                    # restore ra
+ 142 00d8 23BD0028	        addi    $sp, $sp, 40                    # move stack pointer back
+ 143 00dc 03E00008	        jr      $ra 
+ 144 00e0               
+ 145 00e0               
+ 146 00e0               #***** END STUDENT CODE BLOCK 3 *****************************
+
+
+IN_ORDER             = 00000001   
+POST_ORDER           = 00000002   
+PRE_ORDER            = 00000000   
+PRINT_INT            = 00000001   
+PRINT_STRING         = 00000004   
+done_recursion         000000A8 R  text 
+traverse_in_order      00000070 R  text 
+traverse_post_order    0000008C R  text 
+traverse_pre_order     00000054 R  text 
+traverse_tree          00000000 RG text 

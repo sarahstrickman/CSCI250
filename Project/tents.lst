@@ -1,0 +1,1959 @@
+   1 0000               # File:         tents.asm
+   2 0000               # Author:       Sarah Strickman (sxs4599)
+   3 0000               # Contributors: Sarah Strickman
+   4 0000               #               Joe (Mama)
+   5 0000               #
+   6 0000               # Description:  Runs the tents program.
+   7 0000               #               Specifications can be found on the CSCI250 website.
+   8 0000               #
+   9 0000               # Revisions:    $Log$
+  10 0000               
+  11 0000               
+  12 0000               ######### CONSTANTS ##########
+  13 0000               
+  14 0000               # syscall codes
+  15 0000               PRINT_INT = 1
+  16 0000               PRINT_STRING = 4
+  17 0000               READ_INT = 5
+  18 0000               READ_STRING = 8
+  19 0000               TERMINATE_PGRM = 10
+  20 0000               PRINT_CHAR = 11
+  21 0000               READ_CHAR = 12
+  22 0000               
+  23 0000               # board codes
+  24 0000               EMPTY_SPACE = 1         # empty space (just grass here)
+  25 0000               TREE_EMPTY = 2          # tree without tent attached
+  26 0000               TREE_TOP = 3            # tree with tent attached above it
+  27 0000               TREE_LEFT = 4           # tree with tent attached left of it
+  28 0000               TREE_RIGHT = 5          # tree with tent attached right of it
+  29 0000               TREE_BOT = 6            # tree with tent attached below it
+  30 0000               TENT = 7                # tent (there's a tent here!)
+  31 0000               
+  32 0000               # min/max values
+  33 0000               MAX_BUFFER_SIZE = 20    # max size of an input line
+  34 0000               MIN_BOARD_SIZE = 2      # min board size
+  35 0000               MAX_BOARD_SIZE = 12     # max board size
+  36 0000               
+  37 0000               # char values
+  38 0000               SPACE_CHAR = 32         # ascii value for ' '
+  39 0000               NEWLINE_CHAR = 10       # ascii value for '\n'
+  40 0000               TREE_CHAR = 84          # ascii value for 'T'
+  41 0000               EMPTY_SPACE_CHAR = 46   # ascii value for '.'
+  42 0000               TENT_CHAR = 65          # ascii value for 'A'
+  43 0000               
+  44 0000               ########## DATA AREAS ##########
+  45 0000                       .data
+  46 0000                       .align  2
+  47 0000               
+  48 0000               #
+  49 0000               # memory for the arrays
+  50 0000               #
+  51 0000               
+  52 0000               board:
+  53 0000 00000000	        .space  MAX_BOARD_SIZE*MAX_BOARD_SIZE*4 # double array of the board
+          00000000
+          00000000
+          00000000
+          00000000
+          00000000
+  54 0240               
+  55 0240               rowMax:
+  56 0240 00000000	        .space  MAX_BOARD_SIZE*4
+          00000000
+          00000000
+          00000000
+          00000000
+          00000000
+  57 0270               
+  58 0270               colMax:
+  59 0270 00000000	        .space  MAX_BOARD_SIZE*4
+          00000000
+          00000000
+          00000000
+          00000000
+          00000000
+  60 02a0               
+  61 02a0               #
+  62 02a0               # print strings
+  63 02a0               #
+  64 02a0                       .align	0               # string data doesn't have to be aligned
+  65 02a0               
+  66 02a0               buffer:
+  67 02a0 60606060	        .asciiz "\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0"
+          60606060
+          60003030
+          30303030
+          30303000
+  68 02b4               
+  69 02b4               # useful characters
+  70 02b4               newline_char:
+  71 02b4 0A00    	        .asciiz "\n"
+  72 02b6               
+  73 02b6               space_char:
+  74 02b6 2000    	        .asciiz " "
+  75 02b8               
+  76 02b8               # banner/title strings
+  77 02b8               tents_banner_string:
+  78 02b8 0A2A2A2A	        .asciiz "\n******************\n**     Tents    **\n******************\n\n"
+          2A2A2A2A
+          2A2A2A2A
+          2A2A2A2A
+          2A2A2A0A
+          2A2A2020
+  79 02f4               
+  80 02f4               # error messages
+  81 02f4               error_msg_board_size:
+  82 02f4 496E7661	        .asciiz "Invalid board size, Tents terminating\n"
+          6C696420
+          626F6172
+          64207369
+          7A652C20
+          54656E74
+  83 031b               
+  84 031b               error_msg_illegal_sum:
+  85 031b 496C6C65	        .asciiz "Illegal sum value, Tents terminating\n"
+          67616C20
+          73756D20
+          76616C75
+          652C2054
+          656E7473
+  86 0341               
+  87 0341               error_msg_illegal_char:
+  88 0341 496C6C65	        .asciiz "Illegal board character, Tents terminating\n"
+          67616C20
+          626F6172
+          64206368
+          61726163
+          7465722C
+  89 036d               
+  90 036d               error_msg_impossible_puzzle:
+  91 036d 496D706F	        .asciiz "Impossible Puzzle\n\n"
+          73736962
+          6C652050
+          757A7A6C
+          650A0A00
+  92 0381               
+  93 0381               # printing the board
+  94 0381               board_title_initial:
+  95 0381 496E6974	        .asciiz "Initial Puzzle\n\n"
+          69616C20
+          50757A7A
+          6C650A0A
+          00      
+  96 0392               
+  97 0392               board_title_final:
+  98 0392 46696E61	        .asciiz "Final Puzzle\n\n"
+          6C205075
+          7A7A6C65
+          0A0A00  
+  99 03a1               
+ 100 03a1               board_border_unit_beg:
+ 101 03a1 2B2D00  	        .asciiz "+-"
+ 102 03a4               
+ 103 03a4               board_border_unit_mid:
+ 104 03a4 2D2D00  	        .asciiz "--"
+ 105 03a7               
+ 106 03a7               board_border_unit_end:
+ 107 03a7 2B0A00  	        .asciiz "+\n"
+ 108 03aa               
+ 109 03aa               board_contents_side:
+ 110 03aa 7C2000  	        .asciiz "| "
+ 111 03ad               
+ 112 03ad               board_contents_grass:
+ 113 03ad 2E2000  	        .asciiz ". "
+ 114 03b0               
+ 115 03b0               board_contents_tent:
+ 116 03b0 412000  	        .asciiz "A "
+ 117 03b3               
+ 118 03b3               board_contents_tree:
+ 119 03b3 542000  	        .asciiz "T "
+ 120 03b6               
+ 121 03b6               ################################################################
+ 122 03b6               # Code segments -------------
+ 123 03b6               ################################################################
+ 124 03b6               
+ 125 0000               	.text
+ 126 0000                       .align 2
+ 127 0000                       .globl  main
+ 128 0000               
+ 129 0000               #
+ 130 0000               # Name:         main
+ 131 0000               #
+ 132 0000               # Description:  EXECUTION STARTS HERE
+ 133 0000               #
+ 134 0000               # Arguments:    None
+ 135 0000               #
+ 136 0000               # Returns:      None
+ 137 0000               #
+ 138 0000               main:
+ 139 0000 23BDFFD8	        addi    $sp, $sp, -40                   # move stack pointer
+ 140 0004 AFBF0020	        sw      $ra, 32($sp)                    # store ra
+ 141 0008 AFB7001C	        sw      $s7, 28($sp)                    # store s registers
+ 142 000c AFB60018	        sw      $s6, 24($sp)
+ 143 0010 AFB50014	        sw      $s5, 20($sp)
+ 144 0014 AFB40010	        sw      $s4, 16($sp)
+ 145 0018 AFB3000C	        sw      $s3, 12($sp)
+ 146 001c AFB20008	        sw      $s2, 8($sp)
+ 147 0020 AFB10004	        sw      $s1, 4($sp)
+ 148 0024 AFB00000	        sw      $s0, 0($sp)
+ 149 0028               
+ 150 0028 3404000C	        li      $a0, MAX_BOARD_SIZE             # initialize the board with 0
+ 151 002c 00840018	        mul     $a0, $a0, $a0
+     0030 00002012
+ 152 0034 3C050000	        la      $a1, board
+     0038 34A50000
+ 153 003c 0C0003B2	        jal     initialize_words
+ 154 0040               
+ 155 0040 3404000C	        li      $a0, MAX_BOARD_SIZE             # initialize the col capacity
+ 156 0044 3C050000	        la      $a1, colMax                     # array with 0
+     0048 34A50000
+ 157 004c 0C0003B2	        jal     initialize_words
+ 158 0050               
+ 159 0050 3404000C	        li      $a0, MAX_BOARD_SIZE             # initialize the row capacity
+ 160 0054 3C050000	        la      $a1, rowMax                     # array with 0
+     0058 34A50000
+ 161 005c 0C0003B2	        jal     initialize_words
+ 162 0060                       
+ 163 0060 34040014	        li      $a0, MAX_BUFFER_SIZE            # initialize the string buffer
+ 164 0064 3C050000	        la      $a1, buffer                     # array with 0's
+     0068 34A50000
+ 165 006c 0C0003BD	        jal     initialize_bytes
+ 166 0070               
+ 167 0070 3C040000	        la      $a0, tents_banner_string        # print the title banner
+     0074 34840000
+ 168 0078 34020004	        li      $v0, PRINT_STRING
+ 169 007c 0000000C	        syscall
+ 170 0080                       
+ 171 0080 34020005	        li      $v0, READ_INT                   # get boardSize
+ 172 0084 0000000C	        syscall                                 # int is in v0
+ 173 0088                
+ 174 0088 00408020	        add     $s0, $v0, $zero                 # s0 = boardSize
+ 175 008c               
+ 176 008c 00102020	        add     $a0, $zero, $s0                 # validate board size
+ 177 0090 0C0003FB	        jal     validate_boardsize
+ 178 0094 14400040	        bne     $v0, $zero, main_done
+ 179 0098               
+ 180 0098 34020008	        li      $v0, READ_STRING                # read the line for the
+ 181 009c 3C040000	        la      $a0, buffer                     # row max's
+     00a0 34840000
+ 182 00a4 34050014	        li      $a1, MAX_BUFFER_SIZE
+ 183 00a8 0000000C	        syscall
+ 184 00ac               
+ 185 00ac 02002020	        add     $a0, $s0, $zero
+ 186 00b0 3C050000	        la      $a1, rowMax
+     00b4 34A50000
+ 187 00b8 0C0003C8	        jal     populate_max_sums
+ 188 00bc 14400036	        bne     $v0, $zero, main_done           # validate sums for rows
+ 189 00c0               
+ 190 00c0 34040014	        li      $a0, MAX_BUFFER_SIZE            # initialize the string buffer
+ 191 00c4 3C050000	        la      $a1, buffer                     # array with 0's
+     00c8 34A50000
+ 192 00cc 0C0003BD	        jal     initialize_bytes
+ 193 00d0               
+ 194 00d0 34020008	        li      $v0, READ_STRING                # read the line for the
+ 195 00d4 3C040000	        la      $a0, buffer                     # col max's
+     00d8 34840000
+ 196 00dc 34050014	        li      $a1, MAX_BUFFER_SIZE
+ 197 00e0 0000000C	        syscall
+ 198 00e4               
+ 199 00e4 02002020	        add     $a0, $s0, $zero
+ 200 00e8 3C050000	        la      $a1, colMax
+     00ec 34A50000
+ 201 00f0 0C0003C8	        jal     populate_max_sums
+ 202 00f4 14400028	        bne     $v0, $zero, main_done           # validate sums for col
+ 203 00f8               
+ 204 00f8 02002020	        add     $a0, $s0, $zero                 # read, populate, validate
+ 205 00fc 3C050000	        la      $a1, board                      # board
+     0100 34A50000
+ 206 0104 0C0002BA	        jal     populate_board
+ 207 0108 14400023	        bne     $v0, $zero, main_done           # validate chars for board
+ 208 010c               
+ 209 010c 3C040000	        la      $a0, board_title_initial        # print "Initial Board"
+     0110 34840000
+ 210 0114 34020004	        li      $v0, PRINT_STRING
+ 211 0118 0000000C	        syscall
+ 212 011c               
+ 213 011c 02002020	        add     $a0, $s0, $zero                 # print the board
+ 214 0120 3C050000	        la      $a1, board
+     0124 34A50000
+ 215 0128 3C060000	        la      $a2, rowMax
+     012c 34C60000
+ 216 0130 3C070000	        la      $a3, colMax
+     0134 34E70000
+ 217 0138 0C000302	        jal     print_board
+ 218 013c               
+ 219 013c 3402000B	        li      $v0, PRINT_CHAR
+ 220 0140 3404000A	        li      $a0, NEWLINE_CHAR
+ 221 0144 0000000C	        syscall
+ 222 0148               
+ 223 0148 02002020	        add     $a0, $s0, $zero                 # solve the board.
+ 224 014c 3C050000	        la      $a1, board                      # is_solution will return 0
+     0150 34A50000
+ 225 0154 0C000071	        jal     is_solution                     # if there is no solution.
+ 226 0158 1040000F	        beq     $v0, $zero, main_done
+ 227 015c               
+ 228 015c 34020004	        li      $v0, PRINT_STRING
+ 229 0160 3C040000	        la      $a0, board_title_final
+     0164 34840000
+ 230 0168 0000000C	        syscall
+ 231 016c               
+ 232 016c 02002020	        add     $a0, $s0, $zero                 # print the solved board
+ 233 0170 3C050000	        la      $a1, board
+     0174 34A50000
+ 234 0178 3C060000	        la      $a2, rowMax
+     017c 34C60000
+ 235 0180 3C070000	        la      $a3, colMax
+     0184 34E70000
+ 236 0188 0C000302	        jal     print_board
+ 237 018c               
+ 238 018c 3402000B	        li      $v0, PRINT_CHAR
+ 239 0190 3404000A	        li      $a0, NEWLINE_CHAR
+ 240 0194 0000000C	        syscall
+ 241 0198               
+ 242 0198               #---
+ 243 0198               
+ 244 0198               main_done:
+ 245 0198 8FB00000	        lw      $s0, 0($sp)                     # restore s registers
+ 246 019c 8FB10004	        lw      $s1, 4($sp)
+ 247 01a0 8FB20008	        lw      $s2, 8($sp)
+ 248 01a4 8FB3000C	        lw      $s3, 12($sp)
+ 249 01a8 8FB40010	        lw      $s4, 16($sp)
+ 250 01ac 8FB50014	        lw      $s5, 20($sp)
+ 251 01b0 8FB60018	        lw      $s6, 24($sp)
+ 252 01b4 8FB7001C	        lw      $s7, 28($sp)
+ 253 01b8 8FBF0020	        lw      $ra, 32($sp)                    # restore ra
+ 254 01bc 23BD0028	        addi    $sp, $sp, 40                    # move stack pointer back
+ 255 01c0               
+ 256 01c0 03E00008		jr	$ra				# return from main and exit
+ 257 01c4               #------------------
+ 258 01c4               
+ 259 01c4               # Name:         is_solution
+ 260 01c4               #
+ 261 01c4               # Description:  Attempts to solve the board. If there is no solution to
+ 262 01c4               #               the puzzle, print the error message. Board will be modified
+ 263 01c4               #               to contain the solution if one is found.
+ 264 01c4               #
+ 265 01c4               # Parameters:   a0: boardSize
+ 266 01c4               #               a1: pointer to board
+ 267 01c4               #
+ 268 01c4               # Returns:      0 if no solution exists (impossible board)
+ 269 01c4               #               2 if valid solution is found
+ 270 01c4               is_solution:
+ 271 01c4 23BDFFD8	        addi    $sp, $sp, -40                   # move stack pointer
+ 272 01c8 AFBF0020	        sw      $ra, 32($sp)                    # store ra
+ 273 01cc AFB7001C	        sw      $s7, 28($sp)                    # store s registers
+ 274 01d0 AFB60018	        sw      $s6, 24($sp)
+ 275 01d4 AFB50014	        sw      $s5, 20($sp)
+ 276 01d8 AFB40010	        sw      $s4, 16($sp)
+ 277 01dc AFB3000C	        sw      $s3, 12($sp)
+ 278 01e0 AFB20008	        sw      $s2, 8($sp)
+ 279 01e4 AFB10004	        sw      $s1, 4($sp)
+ 280 01e8 AFB00000	        sw      $s0, 0($sp)
+ 281 01ec               
+ 282 01ec 00802020	        add     $a0, $a0, $zero                 # attempt to solve the board
+ 283 01f0 34050000	        li      $a1, 0
+ 284 01f4 34060000	        li      $a2, 0
+ 285 01f8 0C000090	        jal     solve
+ 286 01fc               
+ 287 01fc 14400005	        bne     $v0, $zero, is_solution_done    # a valid solution was found
+ 288 0200               
+ 289 0200               is_solution_none:                               # no solution found
+ 290 0200 34020004	        li      $v0, PRINT_STRING
+ 291 0204 3C040000	        la      $a0, error_msg_impossible_puzzle
+     0208 34840000
+ 292 020c 0000000C	        syscall
+ 293 0210 34020000	        li      $v0, 0                          # restore v0
+ 294 0214               
+ 295 0214                                                               # no need to make any changes
+ 296 0214                                                               # to v0, as it will already 
+ 297 0214                                                               # return 0 if no sol, and 
+ 298 0214                                                               # different number otherwise
+ 299 0214               is_solution_done:
+ 300 0214 8FB00000	        lw      $s0, 0($sp)                     # restore s registers
+ 301 0218 8FB10004	        lw      $s1, 4($sp)
+ 302 021c 8FB20008	        lw      $s2, 8($sp)
+ 303 0220 8FB3000C	        lw      $s3, 12($sp)
+ 304 0224 8FB40010	        lw      $s4, 16($sp)
+ 305 0228 8FB50014	        lw      $s5, 20($sp)
+ 306 022c 8FB60018	        lw      $s6, 24($sp)
+ 307 0230 8FB7001C	        lw      $s7, 28($sp)
+ 308 0234 8FBF0020	        lw      $ra, 32($sp)                    # restore ra
+ 309 0238 23BD0028	        addi    $sp, $sp, 40                    # move stack pointer back
+ 310 023c               
+ 311 023c 03E00008		jr	$ra				# return
+ 312 0240               
+ 313 0240               #------------------
+ 314 0240               
+ 315 0240               # Name:         solve
+ 316 0240               #
+ 317 0240               # Description:  Recursively tries to solve the maze.
+ 318 0240               #
+ 319 0240               # Parameters:   a0: boardSize
+ 320 0240               #               a1: row to start iterating from
+ 321 0240               #               a2: col to start iterating from
+ 322 0240               #
+ 323 0240               # Returns:      0 if there is no solution
+ 324 0240               #               1 if this is a valid configuration
+ 325 0240               #               2 if this is configuration is the solution
+ 326 0240               solve:
+ 327 0240 23BDFFD8	        addi    $sp, $sp, -40                   # move stack pointer
+ 328 0244 AFBF0020	        sw      $ra, 32($sp)                    # store ra
+ 329 0248 AFB7001C	        sw      $s7, 28($sp)                    # store s registers
+ 330 024c AFB60018	        sw      $s6, 24($sp)
+ 331 0250 AFB50014	        sw      $s5, 20($sp)
+ 332 0254 AFB40010	        sw      $s4, 16($sp)
+ 333 0258 AFB3000C	        sw      $s3, 12($sp)
+ 334 025c AFB20008	        sw      $s2, 8($sp)
+ 335 0260 AFB10004	        sw      $s1, 4($sp)
+ 336 0264 AFB00000	        sw      $s0, 0($sp)
+ 337 0268               
+ 338 0268 00808020	        add     $s0, $a0, $zero                 # s0 = boardSize
+ 339 026c 3C110000	        la      $s1, board                      # s1 = pointer to board
+     0270 36310000
+ 340 0274 00A09020	        add     $s2, $a1, $zero                 # s2 = index of rows
+ 341 0278 00C09820	        add     $s3, $a2, $zero                 # s3 = index of cols
+ 342 027c               
+ 343 027c 3C060000	        la      $a2, rowMax
+     0280 34C60000
+ 344 0284 3C070000	        la      $a3, colMax
+     0288 34E70000
+ 345 028c 3C080000	        la      $t0, board
+     0290 35080000
+ 346 0294 02500018	        mul     $t1, $s2, $s0                   # t1 = idx of board
+     0298 00004812
+ 347 029c 01334820	        add     $t1, $t1, $s3
+ 348 02a0 34010004	        mul     $t1, $t1, 4
+     02a4 01210018
+     02a8 00004812
+ 349 02ac               
+ 350 02ac 02298820	        add     $s1, $s1, $t1                   # s1 = pointer to new 
+ 351 02b0                                                               #      idx at board
+ 352 02b0               
+ 353 02b0                                                               # Loop until you find the next
+ 354 02b0                                                               # tree
+ 355 02b0               solve_loop1:
+ 356 02b0 0250402A	        slt     $t0, $s2, $s0                   # No more trees. Treat this
+ 357 02b4 110000DD	        beq     $t0, $zero, solve_solution      # as solution
+ 358 02b8               
+ 359 02b8               solve_loop2:
+ 360 02b8 0270402A	        slt     $t0, $s3, $s0                   # finished looking at this row
+ 361 02bc 110000D8	        beq     $t0, $zero, solve_done2
+ 362 02c0               
+ 363 02c0 34080002	        li      $t0, TREE_EMPTY                 # there is no tree here. Keep
+ 364 02c4 8E290000	        lw      $t1, 0($s1)                     # looping through the board
+ 365 02c8               
+ 366 02c8 152800D2	       bne     $t1, $t0, solve_skip_space
+ 367 02cc               
+ 368 02cc               solve_left:
+ 369 02cc 12600033	        beq     $s3, $zero, solve_top
+ 370 02d0               
+ 371 02d0 02002020	        add     $a0, $s0, $zero                 # check validity of space
+ 372 02d4 22460000	        addi    $a2, $s2, 0                     # left of this tree
+ 373 02d8 2267FFFF	        addi    $a3, $s3, -1
+ 374 02dc 0C00019C	        jal     space_valid
+ 375 02e0               
+ 376 02e0 1040002E	        beq     $v0, $zero, solve_top           # space is invalid. v0 is 0
+ 377 02e4                      
+ 378 02e4 34080004	        li      $t0, TREE_LEFT
+ 379 02e8 AE280000	        sw      $t0, 0($s1)
+ 380 02ec               
+ 381 02ec 34080007	        li      $t0, TENT
+ 382 02f0 3C090000	        la      $t1, board
+     02f4 35290000
+ 383 02f8 224A0000	        addi    $t2, $s2, 0                     # t2 = row of left space
+ 384 02fc 226BFFFF	        addi    $t3, $s3, -1                    # t3 = col of left space
+ 385 0300               
+ 386 0300 020A0018	        mul     $t4, $s0, $t2
+     0304 00006012
+ 387 0308 018B6020	        add     $t4, $t4, $t3
+ 388 030c 34010004	        mul     $t4, $t4, 4
+     0310 01810018
+     0314 00006012
+ 389 0318 012C4820	        add     $t1, $t1, $t4                   # t1 points to left space
+ 390 031c AD280000	        sw      $t0, 0($t1)                     # put a tent in this space
+ 391 0320               
+ 392 0320 02002020	        add     $a0, $s0, $zero                 # check if this tree is the
+ 393 0324 02402820	        add     $a1, $s2, $zero                 # last one.
+ 394 0328 02603020	        add     $a2, $s3, $zero
+ 395 032c 0C000254	        jal     is_last_tree
+ 396 0330 144000BE	        bne     $v0, $zero, solve_solution      # if space is valid and this
+ 397 0334                                                               # the last tree, then this is
+ 398 0334                                                               # the solution.
+ 399 0334               
+ 400 0334 02002020	        add     $a0, $s0, $zero                 # make recursive call.
+ 401 0338 02402820	        add     $a1, $s2, $zero
+ 402 033c 02603020	        add     $a2, $s3, $zero
+ 403 0340 0C000090	        jal     solve
+ 404 0344               
+ 405 0344 34080002	        li      $t0, 2                          # if solution has been found,
+ 406 0348 110200B8	        beq     $t0, $v0, solve_solution        # bubble back up!
+ 407 034c               
+ 408 034c 34080001	        li      $t0, 1                          # shouldn't actually return 1
+ 409 0350 11020012	        beq     $t0, $v0, solve_top
+ 410 0354               
+ 411 0354 34080000	        li      $t0, 0
+ 412 0358 11020001	        beq     $t0, $v0, solve_left_dead_end
+ 413 035c 0800018F	        j       solve_invalid
+ 414 0360               
+ 415 0360               solve_left_dead_end:
+ 416 0360 34080002	        li      $t0, TREE_EMPTY                 # reset tree to empty
+ 417 0364 AE280000	        sw      $t0, 0($s1)
+ 418 0368               
+ 419 0368 224A0000	        addi    $t2, $s2, 0
+ 420 036c 226BFFFF	        addi    $t3, $s3, -1
+ 421 0370               
+ 422 0370 01500018	        mul     $t4, $t2, $s0
+     0374 00006012
+ 423 0378 018B6020	        add     $t4, $t4, $t3
+ 424 037c 34010004	        mul     $t4, $t4, 4
+     0380 01810018
+     0384 00006012
+ 425 0388 3C090000	        la      $t1, board
+     038c 35290000
+ 426 0390 012C4820	        add     $t1, $t1, $t4                   # t1 points to left space
+ 427 0394               
+ 428 0394 34080001	        li      $t0, EMPTY_SPACE                # remove tent from left space
+ 429 0398 AD280000	        sw      $t0, 0($t1)
+ 430 039c               
+ 431 039c               solve_top:
+ 432 039c 12400033	        beq     $s2, $zero, solve_right
+ 433 03a0               
+ 434 03a0 02002020	        add     $a0, $s0, $zero                 # check validity of space
+ 435 03a4 2246FFFF	        add     $a2, $s2, -1                    # left of this tree
+ 436 03a8 22670000	        addi    $a3, $s3, 0
+ 437 03ac 0C00019C	        jal     space_valid
+ 438 03b0               
+ 439 03b0 1040002E	        beq     $v0, $zero, solve_right         # space is invalid. v0 is 0
+ 440 03b4               
+ 441 03b4 34080003	        li      $t0, TREE_TOP                   # PLACE THE TENT
+ 442 03b8 AE280000	        sw      $t0, 0($s1)                     # reassign tree
+ 443 03bc               
+ 444 03bc 34080007	        li      $t0, TENT
+ 445 03c0 3C090000	        la      $t1, board
+     03c4 35290000
+ 446 03c8 224AFFFF	        addi    $t2, $s2, -1                    # t2 = row of top space
+ 447 03cc 226B0000	        addi    $t3, $s3, 0                     # t3 = col of top space
+ 448 03d0               
+ 449 03d0 020A0018	        mul     $t4, $s0, $t2
+     03d4 00006012
+ 450 03d8 018B6020	        add     $t4, $t4, $t3
+ 451 03dc 34010004	        mul     $t4, $t4, 4
+     03e0 01810018
+     03e4 00006012
+ 452 03e8 012C4820	        add     $t1, $t1, $t4                   # t1 points to top space
+ 453 03ec AD280000	        sw      $t0, 0($t1)                     # put a tent in this space
+ 454 03f0               
+ 455 03f0 02002020	        add     $a0, $s0, $zero                 # check if this tree is the
+ 456 03f4 02402820	        add     $a1, $s2, $zero                 # last one.
+ 457 03f8 02603020	        add     $a2, $s3, $zero
+ 458 03fc 0C000254	        jal     is_last_tree
+ 459 0400 1440008A	        bne     $v0, $zero, solve_solution      # if space is valid and this
+ 460 0404                                                               # the last tree, then this is
+ 461 0404                                                               # the solution.
+ 462 0404               
+ 463 0404 02002020	        add     $a0, $s0, $zero                 # make recursive call.
+ 464 0408 02402820	        add     $a1, $s2, $zero
+ 465 040c 02603020	        add     $a2, $s3, $zero
+ 466 0410 0C000090	        jal     solve
+ 467 0414               
+ 468 0414 34080002	        li      $t0, 2                          # if solution has been found,
+ 469 0418 11020084	        beq     $t0, $v0, solve_solution        # bubble back up!
+ 470 041c               
+ 471 041c 34080001	        li      $t0, 1                          # shouldn't actually return 1
+ 472 0420 11020012	        beq     $t0, $v0, solve_right
+ 473 0424               
+ 474 0424 34080000	        li      $t0, 0                          # recursive calls from this
+ 475 0428 11020001	        beq     $t0, $v0, solve_top_dead_end    # position had no solution
+ 476 042c               
+ 477 042c 0800018F	        j       solve_invalid                   # some invalid code
+ 478 0430               
+ 479 0430               solve_top_dead_end:
+ 480 0430 34080002	        li      $t0, TREE_EMPTY                 # reset tree to empty
+ 481 0434 AE280000	        sw      $t0, 0($s1)
+ 482 0438               
+ 483 0438 3C090000	        la      $t1, board
+     043c 35290000
+ 484 0440 224AFFFF	        addi    $t2, $s2, -1
+ 485 0444 226B0000	        addi    $t3, $s3, 0
+ 486 0448               
+ 487 0448 01500018	        mul     $t4, $t2, $s0
+     044c 00006012
+ 488 0450 018B6020	        add     $t4, $t4, $t3
+ 489 0454 34010004	        mul     $t4, $t4, 4
+     0458 01810018
+     045c 00006012
+ 490 0460 012C4820	        add     $t1, $t1, $t4                   # t1 points to left space
+ 491 0464               
+ 492 0464 34080001	        li      $t0, EMPTY_SPACE                # remove tent from left space
+ 493 0468 AD280000	        sw      $t0, 0($t1)
+ 494 046c               
+ 495 046c               solve_right:
+ 496 046c 12700033	        beq     $s3, $s0, solve_bottom
+ 497 0470 02002020	        add     $a0, $s0, $zero                 # check validity of space
+ 498 0474 22460000	        addi    $a2, $s2, 0                     # right of this tree
+ 499 0478 22670001	        addi    $a3, $s3, 1
+ 500 047c 0C00019C	        jal     space_valid
+ 501 0480 1040002E	        beq     $v0, $zero, solve_bottom        # space is invalid. v0 is 0
+ 502 0484               
+ 503 0484 34080005	        li      $t0, TREE_RIGHT                 # PLACE THE TENT
+ 504 0488 AE280000	        sw      $t0, 0($s1)                     # reassign tree
+ 505 048c               
+ 506 048c 34080007	        li      $t0, TENT
+ 507 0490 3C090000	        la      $t1, board
+     0494 35290000
+ 508 0498 224A0000	        addi    $t2, $s2, 0                     # t2 = row of right space
+ 509 049c 226B0001	        addi    $t3, $s3, 1                     # t3 = col of right space
+ 510 04a0               
+ 511 04a0 020A0018	        mul     $t4, $s0, $t2
+     04a4 00006012
+ 512 04a8 018B6020	        add     $t4, $t4, $t3
+ 513 04ac 34010004	        mul     $t4, $t4, 4
+     04b0 01810018
+     04b4 00006012
+ 514 04b8 012C4820	        add     $t1, $t1, $t4                   # t1 points to right space
+ 515 04bc AD280000	        sw      $t0, 0($t1)                     # put a tent in this space
+ 516 04c0               
+ 517 04c0 02002020	        add     $a0, $s0, $zero                 # check if this tree is the
+ 518 04c4 02402820	        add     $a1, $s2, $zero                 # last one.
+ 519 04c8 02603020	        add     $a2, $s3, $zero
+ 520 04cc 0C000254	        jal     is_last_tree
+ 521 04d0 14400056	        bne     $v0, $zero, solve_solution      # if space is valid and this
+ 522 04d4                                                               # the last tree, then this is
+ 523 04d4                                                               # the solution.
+ 524 04d4               
+ 525 04d4 02002020	        add     $a0, $s0, $zero                 # make recursive call.
+ 526 04d8 02402820	        add     $a1, $s2, $zero
+ 527 04dc 02603020	        add     $a2, $s3, $zero
+ 528 04e0 0C000090	        jal     solve
+ 529 04e4               
+ 530 04e4 34080002	        li      $t0, 2                          # if solution has been found,
+ 531 04e8 11020050	        beq     $t0, $v0, solve_solution        # bubble back up!
+ 532 04ec               
+ 533 04ec 34080001	        li      $t0, 1                          # shouldn't actually return 1
+ 534 04f0 11020012	        beq     $t0, $v0, solve_bottom
+ 535 04f4               
+ 536 04f4 34080000	        li      $t0, 0                          # recursive calls from this
+ 537 04f8 11020001	        beq     $t0, $v0, solve_right_dead_end  # position had no solution
+ 538 04fc               
+ 539 04fc 0800018F	        j       solve_invalid                   # some invalid code
+ 540 0500               
+ 541 0500               solve_right_dead_end:
+ 542 0500 34080002	        li      $t0, TREE_EMPTY                 # reset tree to empty
+ 543 0504 AE280000	        sw      $t0, 0($s1)
+ 544 0508               
+ 545 0508 3C090000	        la      $t1, board
+     050c 35290000
+ 546 0510 224A0000	        addi    $t2, $s2, 0
+ 547 0514 226B0001	        addi    $t3, $s3, 1
+ 548 0518               
+ 549 0518 01500018	        mul     $t4, $t2, $s0
+     051c 00006012
+ 550 0520 018B6020	        add     $t4, $t4, $t3
+ 551 0524 34010004	        mul     $t4, $t4, 4
+     0528 01810018
+     052c 00006012
+ 552 0530 012C4820	        add     $t1, $t1, $t4                   # t1 points to left space
+ 553 0534               
+ 554 0534 34080001	        li      $t0, EMPTY_SPACE                # remove tent from left space
+ 555 0538 AD280000	        sw      $t0, 0($t1)
+ 556 053c               
+ 557 053c               solve_bottom:
+ 558 053c 1250003F	        beq     $s2, $s0, solve_invalid         # all directions failed
+ 559 0540               
+ 560 0540 02002020	        add     $a0, $s0, $zero                 # check validity of space
+ 561 0544 22460001	        addi    $a2, $s2, 1                     # right of this tree
+ 562 0548 22670000	        addi    $a3, $s3, 0
+ 563 054c 0C00019C	        jal     space_valid
+ 564 0550 00404020	        add     $t0, $v0, $zero
+ 565 0554 10400039	        beq     $v0, $zero, solve_invalid       # space is invalid. v0 is 0
+ 566 0558               
+ 567 0558 34080006	        li      $t0, TREE_BOT                   # PLACE THE TENT
+ 568 055c AE280000	        sw      $t0, 0($s1)                     # reassign tree
+ 569 0560               
+ 570 0560 34080007	        li      $t0, TENT
+ 571 0564 3C090000	        la      $t1, board
+     0568 35290000
+ 572 056c 224A0001	        addi    $t2, $s2, 1                     # t2 = row of right space
+ 573 0570 226B0000	        addi    $t3, $s3, 0                     # t3 = col of right space
+ 574 0574               
+ 575 0574 020A0018	        mul     $t4, $s0, $t2
+     0578 00006012
+ 576 057c 018B6020	        add     $t4, $t4, $t3
+ 577 0580 34010004	        mul     $t4, $t4, 4
+     0584 01810018
+     0588 00006012
+ 578 058c 012C4820	        add     $t1, $t1, $t4                   # t1 points to right space
+ 579 0590 AD280000	        sw      $t0, 0($t1)                     # put a tent in this space
+ 580 0594               
+ 581 0594 02002020	        add     $a0, $s0, $zero                 # check if this tree is the
+ 582 0598 02402820	        add     $a1, $s2, $zero                 # last one.
+ 583 059c 02603020	        add     $a2, $s3, $zero
+ 584 05a0 0C000254	        jal     is_last_tree
+ 585 05a4 14400021	        bne     $v0, $zero, solve_solution      # if space is valid and this
+ 586 05a8                                                               # the last tree, then this is
+ 587 05a8                                                               # the solution.
+ 588 05a8               
+ 589 05a8 02002020	        add     $a0, $s0, $zero                 # make recursive call.
+ 590 05ac 02402820	        add     $a1, $s2, $zero
+ 591 05b0 02603020	        add     $a2, $s3, $zero
+ 592 05b4 0C000090	        jal     solve
+ 593 05b8               
+ 594 05b8 34080002	        li      $t0, 2                          # if solution has been found,
+ 595 05bc 1102001B	        beq     $t0, $v0, solve_solution        # bubble back up!
+ 596 05c0               
+ 597 05c0 34080001	        li      $t0, 1                          # shouldn't actually return 1
+ 598 05c4 1102001D	        beq     $t0, $v0, solve_invalid
+ 599 05c8               
+ 600 05c8 34080000	        li      $t0, 0                          # recursive calls from this
+ 601 05cc 11020001	        beq     $t0, $v0, solve_bottom_dead_end # position had no solution
+ 602 05d0               
+ 603 05d0 0800018F	        j       solve_invalid                   # some invalid code
+ 604 05d4               
+ 605 05d4               solve_bottom_dead_end:
+ 606 05d4 34080002	        li      $t0, TREE_EMPTY                 # reset tree to empty
+ 607 05d8 AE280000	        sw      $t0, 0($s1)
+ 608 05dc               
+ 609 05dc 3C090000	        la      $t1, board
+     05e0 35290000
+ 610 05e4 224A0001	        addi    $t2, $s2, 1
+ 611 05e8 226B0000	        addi    $t3, $s3, 0
+ 612 05ec               
+ 613 05ec 01500018	        mul     $t4, $t2, $s0
+     05f0 00006012
+ 614 05f4 018B6020	        add     $t4, $t4, $t3
+ 615 05f8 34010004	        mul     $t4, $t4, 4
+     05fc 01810018
+     0600 00006012
+ 616 0604 012C4820	        add     $t1, $t1, $t4                   # t1 points to left space
+ 617 0608               
+ 618 0608 34080001	        li      $t0, EMPTY_SPACE                # remove tent from left space
+ 619 060c AD280000	        sw      $t0, 0($t1)
+ 620 0610               
+ 621 0610 0800018F	        j       solve_invalid                   # all 4 directions could not
+ 622 0614                                                               # find a solution
+ 623 0614               
+ 624 0614               solve_skip_space:
+ 625 0614               
+ 626 0614 22730001	        addi    $s3, $s3, 1                     # incr col
+ 627 0618 22310004	        addi    $s1, $s1, 4                     # incr pointer in board
+ 628 061c 080000AE	        j       solve_loop2
+ 629 0620               
+ 630 0620               solve_done2:
+ 631 0620 34130000	        li      $s3, 0                          # reset col idx to 0
+ 632 0624 22520001	        addi    $s2, $s2, 1                     # incr row
+ 633 0628 080000AC	        j       solve_loop1
+ 634 062c               
+ 635 062c               solve_solution:
+ 636 062c 34020002	        li      $v0, 2
+ 637 0630 08000191	        j       solve_done
+ 638 0634               
+ 639 0634               solve_valid:
+ 640 0634 34020001	        li      $v0, 1
+ 641 0638 08000191	        j       solve_done
+ 642 063c               
+ 643 063c               solve_invalid:
+ 644 063c 34020000	        li      $v0, 0
+ 645 0640 08000191	        j       solve_done
+ 646 0644               
+ 647 0644               solve_done:
+ 648 0644 8FB00000	        lw      $s0, 0($sp)                     # restore s registers
+ 649 0648 8FB10004	        lw      $s1, 4($sp)
+ 650 064c 8FB20008	        lw      $s2, 8($sp)
+ 651 0650 8FB3000C	        lw      $s3, 12($sp)
+ 652 0654 8FB40010	        lw      $s4, 16($sp)
+ 653 0658 8FB50014	        lw      $s5, 20($sp)
+ 654 065c 8FB60018	        lw      $s6, 24($sp)
+ 655 0660 8FB7001C	        lw      $s7, 28($sp)
+ 656 0664 8FBF0020	        lw      $ra, 32($sp)                    # restore ra
+ 657 0668 23BD0028	        addi    $sp, $sp, 40                    # move stack pointer back
+ 658 066c               
+ 659 066c 03E00008		jr	$ra				# return from main and exit
+ 660 0670               
+ 661 0670               
+ 662 0670               #------------------
+ 663 0670               
+ 664 0670               # Name:         space_valid
+ 665 0670               #
+ 666 0670               # Description:  Given a board and the coordinates of a space, check if a tent
+ 667 0670               #               can be placed. If yes, place the tent onto the board and return
+ 668 0670               #               1. If no, do not place the tent / remove the tent at this space
+ 669 0670               #               and return 0.
+ 670 0670               #
+ 671 0670               # Parameters:   a0: boardSize
+ 672 0670               #               a1: pointer to board
+ 673 0670               #               a2: row coordinate
+ 674 0670               #               a3: col coordinate
+ 675 0670               #
+ 676 0670               # Returns:      0 if a tent cannot be placed at this space
+ 677 0670               #               1 if a tent can be placed at this space
+ 678 0670               space_valid:
+ 679 0670 23BDFFD8	        addi    $sp, $sp, -40                   # move stack pointer
+ 680 0674 AFBF0020	        sw      $ra, 32($sp)                    # store ra
+ 681 0678 AFB7001C	        sw      $s7, 28($sp)                    # store s registers
+ 682 067c AFB60018	        sw      $s6, 24($sp)
+ 683 0680 AFB50014	        sw      $s5, 20($sp)
+ 684 0684 AFB40010	        sw      $s4, 16($sp)
+ 685 0688 AFB3000C	        sw      $s3, 12($sp)
+ 686 068c AFB20008	        sw      $s2, 8($sp)
+ 687 0690 AFB10004	        sw      $s1, 4($sp)
+ 688 0694 AFB00000	        sw      $s0, 0($sp)
+ 689 0698                       
+ 690 0698 34020001	        li      $v0, 1
+ 691 069c 00808020	        add     $s0, $a0, $zero                 # s0 = boardSize
+ 692 06a0 3C110000	        la      $s1, board                      # s1 = pointer to board
+     06a4 36310000
+ 693 06a8 00C09020	        add     $s2, $a2, $zero                 # s2 = row number
+ 694 06ac 00E09820	        add     $s3, $a3, $zero                 # s3 = col number
+ 695 06b0 3C140000	        la      $s4, rowMax                     # s4 = pointer to rowMax
+     06b4 36940000
+ 696 06b8 3C150000	        la      $s5, colMax                     # s5 = pointer to colMax
+     06bc 36B50000
+ 697 06c0               
+ 698 06c0 34010004	        mul     $t0, $s2, 4
+     06c4 02410018
+     06c8 00004012
+ 699 06cc 0288A020	        add     $s4, $s4, $t0
+ 700 06d0 34010004	        mul     $t0, $s3, 4
+     06d4 02610018
+     06d8 00004012
+ 701 06dc 02A8A820	        add     $s5, $s5, $t0
+ 702 06e0               
+ 703 06e0 02500018	        mul     $t0, $s2, $s0
+     06e4 00004012
+ 704 06e8 01134020	        add     $t0, $t0, $s3
+ 705 06ec 34010004	        mul     $t0, $t0, 4
+     06f0 01010018
+     06f4 00004012
+ 706 06f8 02288820	        add     $s1, $s1, $t0                   # s1 points to this space
+ 707 06fc               
+ 708 06fc 8E280000	        lw      $t0, 0($s1)                     # item at current location
+ 709 0700 34090001	        li      $t1, EMPTY_SPACE                # must be EMPTY_SPACE
+ 710 0704 15090086	        bne     $t0, $t1, space_valid_false
+ 711 0708               
+ 712 0708 02002020	        add     $a0, $s0, $zero                 # get current number of tents
+ 713 070c 02402820	        add     $a1, $s2, $zero                 # in this row/col
+ 714 0710 02603020	        add     $a2, $s3, $zero
+ 715 0714 0C00027B	        jal     rowcol_amt
+ 716 0718               
+ 717 0718 8E880000	        lw      $t0, 0($s4)                     # cannot >= max
+ 718 071c 0048482A	        slt     $t1, $v0, $t0
+ 719 0720 1120007F	        beq     $t1, $zero, space_valid_false
+ 720 0724               
+ 721 0724 8EA80000	        lw      $t0, 0($s5)                     # cannot >= max
+ 722 0728 0068482A	        slt     $t1, $v1, $t0
+ 723 072c 1120007C	        beq     $t1, $zero, space_valid_false
+ 724 0730 34020001	        li      $v0, 1                          # set v0 back to prev
+ 725 0734               
+ 726 0734                                                               # check adjacent (all 8 
+ 727 0734                                                               # directions, including 
+ 728 0734                                                               # diagonals) for another tent
+ 729 0734               space_valid_1_1:
+ 730 0734 1240002E	        beq     $s2, $zero, space_valid_2_1
+ 731 0738 12600010	        beq     $s3, $zero, space_valid_1_2
+ 732 073c 3C080000	        la      $t0, board
+     0740 35080000
+ 733 0744                       
+ 734 0744 3C090000	        la      $t1, board
+     0748 35290000
+ 735 074c 224AFFFF	        addi    $t2, $s2, -1
+ 736 0750 226BFFFF	        addi    $t3, $s3, -1
+ 737 0754               
+ 738 0754 01500018	        mul     $t4, $t2, $s0                   # move pointer to this space
+     0758 00006012
+ 739 075c 018B6020	        add     $t4, $t4, $t3
+ 740 0760 34010004	        mul     $t4, $t4, 4
+     0764 01810018
+     0768 00006012
+ 741 076c 012C4820	        add     $t1, $t1, $t4
+ 742 0770                       
+ 743 0770 8D2C0000	        lw      $t4, 0($t1)
+ 744 0774 340D0007	        li      $t5, TENT
+ 745 0778 118D0069	        beq     $t4, $t5, space_valid_false
+ 746 077c               
+ 747 077c               space_valid_1_2:
+ 748 077c 3C090000	        la      $t1, board
+     0780 35290000
+ 749 0784 224AFFFF	        addi    $t2, $s2, -1
+ 750 0788 226B0000	        addi    $t3, $s3, 0
+ 751 078c               
+ 752 078c 01500018	        mul     $t4, $t2, $s0                   # move pointer to this space
+     0790 00006012
+ 753 0794 018B6020	        add     $t4, $t4, $t3
+ 754 0798 34010004	        mul     $t4, $t4, 4
+     079c 01810018
+     07a0 00006012
+ 755 07a4 012C4820	        add     $t1, $t1, $t4
+ 756 07a8                       
+ 757 07a8 8D2C0000	        lw      $t4, 0($t1)
+ 758 07ac 340D0007	        li      $t5, TENT
+ 759 07b0 118D005B	        beq     $t4, $t5, space_valid_false
+ 760 07b4               
+ 761 07b4               space_valid_1_3:
+ 762 07b4 1270000E	        beq     $s3, $s0, space_valid_2_1
+ 763 07b8               
+ 764 07b8 3C090000	        la      $t1, board
+     07bc 35290000
+ 765 07c0 224AFFFF	        addi    $t2, $s2, -1
+ 766 07c4 226B0001	        addi    $t3, $s3, 1
+ 767 07c8               
+ 768 07c8 01500018	        mul     $t4, $t2, $s0                   # move pointer to this space
+     07cc 00006012
+ 769 07d0 018B6020	        add     $t4, $t4, $t3
+ 770 07d4 34010004	        mul     $t4, $t4, 4
+     07d8 01810018
+     07dc 00006012
+ 771 07e0 012C4820	        add     $t1, $t1, $t4
+ 772 07e4               
+ 773 07e4 8D2C0000	        lw      $t4, 0($t1)
+ 774 07e8 340D0007	        li      $t5, TENT
+ 775 07ec 118D004C	        beq     $t4, $t5, space_valid_false
+ 776 07f0               
+ 777 07f0               space_valid_2_1:
+ 778 07f0 1260000E	        beq     $s3, $zero, space_valid_2_3
+ 779 07f4               
+ 780 07f4 3C090000	        la      $t1, board
+     07f8 35290000
+ 781 07fc 224A0000	        addi    $t2, $s2, 0
+ 782 0800 226BFFFF	        addi    $t3, $s3, -1
+ 783 0804               
+ 784 0804 01500018	        mul     $t4, $t2, $s0                   # move pointer to this space
+     0808 00006012
+ 785 080c 018B6020	        add     $t4, $t4, $t3
+ 786 0810 34010004	        mul     $t4, $t4, 4
+     0814 01810018
+     0818 00006012
+ 787 081c 012C4820	        add     $t1, $t1, $t4
+ 788 0820               
+ 789 0820 8D2C0000	        lw      $t4, 0($t1)
+ 790 0824 340D0007	        li      $t5, TENT
+ 791 0828 118D003D	        beq     $t4, $t5, space_valid_false
+ 792 082c               
+ 793 082c               space_valid_2_3:
+ 794 082c 1270000E	        beq     $s3, $s0, space_valid_3_1
+ 795 0830               
+ 796 0830 3C090000	        la      $t1, board
+     0834 35290000
+ 797 0838 224A0000	        addi    $t2, $s2, 0
+ 798 083c 226B0001	        addi    $t3, $s3, 1
+ 799 0840               
+ 800 0840 01500018	        mul     $t4, $t2, $s0                   # move pointer to this space
+     0844 00006012
+ 801 0848 018B6020	        add     $t4, $t4, $t3
+ 802 084c 34010004	        mul     $t4, $t4, 4
+     0850 01810018
+     0854 00006012
+ 803 0858 012C4820	        add     $t1, $t1, $t4
+ 804 085c                       
+ 805 085c 8D2C0000	        lw      $t4, 0($t1)
+ 806 0860 340D0007	        li      $t5, TENT
+ 807 0864 118D002E	        beq     $t4, $t5, space_valid_false
+ 808 0868               
+ 809 0868               space_valid_3_1:
+ 810 0868 1250002E	        beq     $s2, $s0, space_valid_done
+ 811 086c 1260000E	        beq     $s3, $zero, space_valid_3_2
+ 812 0870               
+ 813 0870 3C090000	        la      $t1, board
+     0874 35290000
+ 814 0878 224A0001	        addi    $t2, $s2, 1
+ 815 087c 226BFFFF	        addi    $t3, $s3, -1
+ 816 0880               
+ 817 0880 01500018	        mul     $t4, $t2, $s0                   # move pointer to this space
+     0884 00006012
+ 818 0888 018B6020	        add     $t4, $t4, $t3
+ 819 088c 34010004	        mul     $t4, $t4, 4
+     0890 01810018
+     0894 00006012
+ 820 0898 012C4820	        add     $t1, $t1, $t4
+ 821 089c                       
+ 822 089c 8D2C0000	        lw      $t4, 0($t1)
+ 823 08a0 340D0007	        li      $t5, TENT
+ 824 08a4 118D001E	        beq     $t4, $t5, space_valid_false
+ 825 08a8               
+ 826 08a8               space_valid_3_2:
+ 827 08a8               
+ 828 08a8 3C090000	        la      $t1, board
+     08ac 35290000
+ 829 08b0 224A0001	        addi    $t2, $s2, 1
+ 830 08b4 226B0000	        addi    $t3, $s3, 0
+ 831 08b8               
+ 832 08b8 01500018	        mul     $t4, $t2, $s0                   # move pointer to this space
+     08bc 00006012
+ 833 08c0 018B6020	        add     $t4, $t4, $t3
+ 834 08c4 34010004	        mul     $t4, $t4, 4
+     08c8 01810018
+     08cc 00006012
+ 835 08d0 012C4820	        add     $t1, $t1, $t4
+ 836 08d4                       
+ 837 08d4 8D2C0000	        lw      $t4, 0($t1)
+ 838 08d8 340D0007	        li      $t5, TENT
+ 839 08dc 118D0010	        beq     $t4, $t5, space_valid_false
+ 840 08e0               
+ 841 08e0               space_valid_3_3:
+ 842 08e0 12700010	        beq     $s3, $s0, space_valid_done
+ 843 08e4               
+ 844 08e4 3C090000	        la      $t1, board
+     08e8 35290000
+ 845 08ec 224A0001	        addi    $t2, $s2, 1
+ 846 08f0 226B0001	        addi    $t3, $s3, 1
+ 847 08f4               
+ 848 08f4 01500018	        mul     $t4, $t2, $s0                   # move pointer to this space
+     08f8 00006012
+ 849 08fc 018B6020	        add     $t4, $t4, $t3
+ 850 0900 34010004	        mul     $t4, $t4, 4
+     0904 01810018
+     0908 00006012
+ 851 090c 012C4820	        add     $t1, $t1, $t4
+ 852 0910                       
+ 853 0910 8D2C0000	        lw      $t4, 0($t1)
+ 854 0914 340D0007	        li      $t5, TENT
+ 855 0918 118D0001	        beq     $t4, $t5, space_valid_false
+ 856 091c               
+ 857 091c 08000249	        j       space_valid_done                # all tests pass!
+ 858 0920               
+ 859 0920               space_valid_false:
+ 860 0920 34020000	        li      $v0, 0
+ 861 0924               
+ 862 0924               space_valid_done:
+ 863 0924 8FB00000	        lw      $s0, 0($sp)                     # restore s registers
+ 864 0928 8FB10004	        lw      $s1, 4($sp)
+ 865 092c 8FB20008	        lw      $s2, 8($sp)
+ 866 0930 8FB3000C	        lw      $s3, 12($sp)
+ 867 0934 8FB40010	        lw      $s4, 16($sp)
+ 868 0938 8FB50014	        lw      $s5, 20($sp)
+ 869 093c 8FB60018	        lw      $s6, 24($sp)
+ 870 0940 8FB7001C	        lw      $s7, 28($sp)
+ 871 0944 8FBF0020	        lw      $ra, 32($sp)                    # restore ra
+ 872 0948 23BD0028	        addi    $sp, $sp, 40                    # move stack pointer back
+ 873 094c               
+ 874 094c 03E00008		jr	$ra				# return from main and exit
+ 875 0950               
+ 876 0950               #------------------
+ 877 0950               
+ 878 0950               #
+ 879 0950               # Name:         is_last_tree
+ 880 0950               #
+ 881 0950               # Description:  Iterates from the location of this tree
+ 882 0950               #               to the end of the board. Returns whether
+ 883 0950               #               or not this is the last tree on the board.
+ 884 0950               #
+ 885 0950               # Parameters:   a0: boardsize
+ 886 0950               #               a1: row of this tree
+ 887 0950               #               a2: col of this tree
+ 888 0950               #
+ 889 0950               # Returns:      0 if this is NOT the last tree (another tree was found)
+ 890 0950               #               1 if no future trees were found
+ 891 0950               is_last_tree:
+ 892 0950 23BDFFF8	        addi    $sp, $sp, -8                    # allocate sp
+ 893 0954 AFBF0000	        sw      $ra, 0($sp)                     # store return addr
+ 894 0958               
+ 895 0958 00804020	        add     $t0, $a0, $zero                 # t0 = boardSize
+ 896 095c 3C090000	        la      $t1, board                      # t1 = pointer to board
+     0960 35290000
+ 897 0964 00A05020	        add     $t2, $a1, $zero                 # t2 = row to start at
+ 898 0968 00C05820	        add     $t3, $a2, $zero                 # t3 = col to start at
+ 899 096c                       
+ 900 096c 01480018	        mul     $t4, $t2, $t0
+     0970 00006012
+ 901 0974 018B6020	        add     $t4, $t4, $t3                   # t4 = cur idx in board array
+ 902 0978               
+ 903 0978 34010004	        mul     $t5, $t4, 4
+     097c 01810018
+     0980 00006812
+ 904 0984 012D4820	        add     $t1, $t5                        # t1 now points to cur idx
+ 905 0988               
+ 906 0988 01080018	        mul     $t5, $t0, $t0                   # t5 = total idx in board
+     098c 00006812
+ 907 0990               
+ 908 0990 218C0001	        addi    $t4, $t4, 1                     # move 1 ahead of the tree
+ 909 0994 21290004	        addi    $t1, $t1, 4
+ 910 0998 34020001	        li      $v0, 1
+ 911 099c               
+ 912 099c               is_last_tree_loop:
+ 913 099c 018D702A	        slt     $t6, $t4, $t5
+ 914 09a0 11C0000F	        beq     $t6, $zero, is_last_tree_done
+ 915 09a4               
+ 916 09a4 8D2E0000	        lw      $t6, 0($t1)
+ 917 09a8 340F0002	        li      $t7, TREE_EMPTY
+ 918 09ac 11CF000B	        beq     $t6, $t7, is_last_tree_false
+ 919 09b0               
+ 920 09b0 340F0003	        li      $t7, TREE_TOP
+ 921 09b4 11CF0009	        beq     $t6, $t7, is_last_tree_false
+ 922 09b8               
+ 923 09b8 340F0004	        li      $t7, TREE_LEFT
+ 924 09bc 11CF0007	        beq     $t6, $t7, is_last_tree_false
+ 925 09c0               
+ 926 09c0 340F0006	        li      $t7, TREE_BOT
+ 927 09c4 11CF0005	        beq     $t6, $t7, is_last_tree_false
+ 928 09c8               
+ 929 09c8 340F0005	        li      $t7, TREE_RIGHT
+ 930 09cc 11CF0003	        beq     $t6, $t7, is_last_tree_false
+ 931 09d0               
+ 932 09d0 218C0001	        addi    $t4, $t4, 1
+ 933 09d4 21290004	        addi    $t1, $t1, 4
+ 934 09d8 08000267	        j       is_last_tree_loop
+ 935 09dc               
+ 936 09dc               is_last_tree_false:
+ 937 09dc 34020000	        li      $v0, 0
+ 938 09e0               
+ 939 09e0               is_last_tree_done:
+ 940 09e0 8FBF0000	        lw      $ra, 0($sp)                     # restore ra
+ 941 09e4 23BD0008	        addi    $sp, $sp, 8                     # move stack ptr back
+ 942 09e8 03E00008	        jr      $ra                             # return
+ 943 09ec               
+ 944 09ec               #------------------
+ 945 09ec               
+ 946 09ec               #
+ 947 09ec               # Name:         rowcol_amt
+ 948 09ec               #
+ 949 09ec               # Description:  Given a certain coordinate on the board,
+ 950 09ec               #               find the existing amount of tents in this
+ 951 09ec               #               row and column.
+ 952 09ec               #
+ 953 09ec               # Parameters:   a0: boardSize
+ 954 09ec               #               a1: row number
+ 955 09ec               #               a2: col number
+ 956 09ec               #
+ 957 09ec               # Returns:      v0: number of tents in this row
+ 958 09ec               #               v1: number of tents in this column
+ 959 09ec               rowcol_amt:
+ 960 09ec 23BDFFD8	        addi    $sp, $sp, -40                   # allocate sp
+ 961 09f0 AFBF0020	        sw      $ra, 32($sp)                    # store return addr
+ 962 09f4 AFB7001C	        sw      $s7, 28($sp)                    # store s registers
+ 963 09f8 AFB60018	        sw      $s6, 24($sp)
+ 964 09fc AFB50014	        sw      $s5, 20($sp)
+ 965 0a00 AFB40010	        sw      $s4, 16($sp)
+ 966 0a04 AFB3000C	        sw      $s3, 12($sp)
+ 967 0a08 AFB20008	        sw      $s2, 8($sp)
+ 968 0a0c AFB10004	        sw      $s1, 4($sp)
+ 969 0a10 AFB00000	        sw      $s0, 0($sp)
+ 970 0a14               
+ 971 0a14 00808020	        add     $s0, $a0, $zero                 # s0 = boardSize
+ 972 0a18 3C110000	        la      $s1, board                      # s1 = pointer to board
+     0a1c 36310000
+ 973 0a20 00A09020	        add     $s2, $a1, $zero                 # s2 = row index (of board)
+ 974 0a24 00C09820	        add     $s3, $a2, $zero                 # s3 = col index (of board)
+ 975 0a28               
+ 976 0a28 00001020	        add     $v0, $zero, $zero               # v0 = amt in this row
+ 977 0a2c 00001820	        add     $v1, $zero, $zero               # v1 = amt in this col
+ 978 0a30               
+ 979 0a30 02500018	        mul     $t0, $s2, $s0                   # point to beginning of this row
+     0a34 00004012
+ 980 0a38 34010004	        mul     $t0, $t0, 4
+     0a3c 01010018
+     0a40 00004012
+ 981 0a44 02288820	        add     $s1, $s1, $t0
+ 982 0a48               
+ 983 0a48 34090000	        li      $t1, 0                          # t1 = counter
+ 984 0a4c               rowcol_amt_row_loop:
+ 985 0a4c 0130402A	        slt     $t0, $t1, $s0
+ 986 0a50 11000007	        beq     $t0, $zero, rowcol_amt_row_done
+ 987 0a54               
+ 988 0a54 8E2A0000	        lw      $t2, 0($s1)
+ 989 0a58 340B0007	        li      $t3, TENT
+ 990 0a5c               
+ 991 0a5c 154B0001	        bne     $t2, $t3, rowcol_amt_no_tent_row
+ 992 0a60 20420001	        add     $v0, $v0, 1
+ 993 0a64               
+ 994 0a64               rowcol_amt_no_tent_row:
+ 995 0a64 21290001	        addi    $t1, $t1, 1
+ 996 0a68 22310004	        add     $s1, $s1, 4
+ 997 0a6c 08000293	        j       rowcol_amt_row_loop
+ 998 0a70               
+ 999 0a70               rowcol_amt_row_done:
+1000 0a70 3C110000	        la      $s1, board                      # point back to board[0][0]
+     0a74 36310000
+1001 0a78 34010004	        mul     $t0, $s3, 4                     # point to top of this col
+     0a7c 02610018
+     0a80 00004012
+1002 0a84 01118820	        add     $s1, $t0, $s1
+1003 0a88               
+1004 0a88 34090000	        li      $t1, 0                          # t1 = counter
+1005 0a8c               
+1006 0a8c               rowcol_amt_col_loop:
+1007 0a8c 0130402A	        slt     $t0, $t1, $s0
+1008 0a90 1100000A	        beq     $t0, $zero, rowcol_amt_col_done
+1009 0a94               
+1010 0a94 8E2A0000	        lw      $t2, 0($s1)
+1011 0a98 340B0007	        li      $t3, TENT
+1012 0a9c                       
+1013 0a9c 154B0001	        bne     $t2, $t3, rowcol_amt_no_tent_col
+1014 0aa0 20630001	        add     $v1, $v1, 1
+1015 0aa4               
+1016 0aa4               rowcol_amt_no_tent_col:
+1017 0aa4 21290001	        addi    $t1, $t1, 1
+1018 0aa8 34010004	        mul     $t0, $s0, 4
+     0aac 02010018
+     0ab0 00004012
+1019 0ab4 02288820	        add     $s1, $s1, $t0
+1020 0ab8 080002A3	        j       rowcol_amt_col_loop
+1021 0abc               
+1022 0abc               rowcol_amt_col_done:
+1023 0abc 8FB00000	        lw      $s0, 0($sp)                     # restore s registers
+1024 0ac0 8FB10004	        lw      $s1, 4($sp)
+1025 0ac4 8FB20008	        lw      $s2, 8($sp)
+1026 0ac8 8FB3000C	        lw      $s3, 12($sp)
+1027 0acc 8FB40010	        lw      $s4, 16($sp)
+1028 0ad0 8FB50014	        lw      $s5, 20($sp)
+1029 0ad4 8FB60018	        lw      $s6, 24($sp)
+1030 0ad8 8FB7001C	        lw      $s7, 28($sp)
+1031 0adc 8FBF0020	        lw      $ra, 32($sp)                    # restore ra
+1032 0ae0 23BD0028	        addi    $sp, $sp, 40                    # move stack pointer back
+1033 0ae4               
+1034 0ae4 03E00008		jr	$ra				# return from main and exit
+1035 0ae8               
+1036 0ae8               #------------------
+1037 0ae8               
+1038 0ae8               #
+1039 0ae8               # Name:         populate_board
+1040 0ae8               #
+1041 0ae8               # Description:  Does some syscalls. Takes each line, validates the 
+1042 0ae8               #               characters, and puts corresponding numbers into the 
+1043 0ae8               #
+1044 0ae8               # Parameters:   a0: boardSize
+1045 0ae8               #               a1: pointer to board
+1046 0ae8               #
+1047 0ae8               # Returns:      0 if the board is populated successfully
+1048 0ae8               #               1 if there is an error in populating the board
+1049 0ae8               populate_board:
+1050 0ae8 23BDFFD8	        addi    $sp, $sp, -40                   # move stack pointer
+1051 0aec AFBF0020	        sw      $ra, 32($sp)                    # store ra
+1052 0af0 AFB7001C	        sw      $s7, 28($sp)                    # store s registers
+1053 0af4 AFB60018	        sw      $s6, 24($sp)
+1054 0af8 AFB50014	        sw      $s5, 20($sp)
+1055 0afc AFB40010	        sw      $s4, 16($sp)
+1056 0b00 AFB3000C	        sw      $s3, 12($sp)
+1057 0b04 AFB20008	        sw      $s2, 8($sp)
+1058 0b08 AFB10004	        sw      $s1, 4($sp)
+1059 0b0c AFB00000	        sw      $s0, 0($sp)
+1060 0b10               
+1061 0b10 0000B820	        add     $s7, $zero, $zero               # s7 = return value
+1062 0b14               
+1063 0b14 00808020	        add     $s0, $a0, $zero                 # s0 = boardSize
+1064 0b18 00A08820	        add     $s1, $a1, $zero                 # move a1 to s1
+1065 0b1c 00004020	        add     $t0, $zero, $zero               # t0 = row counter
+1066 0b20 00004820	        add     $t1, $zero, $zero               # t1 = col counter
+1067 0b24               
+1068 0b24               populate_board_loop1:
+1069 0b24 0290502A	        slt     $t2, $s4, $s0
+1070 0b28 1140002B	        beq     $t2, $zero, populate_board_done1# done looping through board #+
+1071 0b2c               
+1072 0b2c 34040014	        li      $a0, MAX_BUFFER_SIZE            # initialize buffer
+1073 0b30 3C050000	        la      $a1, buffer
+     0b34 34A50000
+1074 0b38 0C0003BD	        jal     initialize_bytes
+1075 0b3c                       
+1076 0b3c 3C120000	        la      $s2, buffer                     # s2 = pointer to buffer
+     0b40 36520000
+1077 0b44               
+1078 0b44 34020008	        li      $v0, READ_STRING                # read the line for the
+1079 0b48 3C040000	        la      $a0, buffer                     # board characters
+     0b4c 34840000
+1080 0b50 34050014	        li      $a1, MAX_BUFFER_SIZE
+1081 0b54 0000000C	        syscall
+1082 0b58               
+1083 0b58 34040014	        li      $a0, MAX_BUFFER_SIZE            # check strlen for any
+1084 0b5c 3C050000	        la      $a1, buffer                     # lines with bad length
+     0b60 34A50000
+1085 0b64 0C00038D	        jal     strlen
+1086 0b68                       
+1087 0b68 2042FFFF	        addi    $v0, $v0, -1                    # subtract 1 for newline char
+1088 0b6c 14500015	        bne     $v0, $s0, populate_board_err    # line was bad length
+1089 0b70               
+1090 0b70               populate_board_loop2:
+1091 0b70 02B0502A	        slt     $t2, $s5, $s0
+1092 0b74 11400010	        beq     $t2, $zero, populate_board_done2        # finished reading line
+1093 0b78               
+1094 0b78 92530000	        lbu     $s3, 0($s2)                     # get item in buffer
+1095 0b7c               
+1096 0b7c 34190054	        li    $t9, TREE_CHAR                    # t9 = dec value for T
+1097 0b80 3418002E	        li    $t8, EMPTY_SPACE_CHAR             # t8 = dec value for .
+1098 0b84               
+1099 0b84                                                               # place grass or tree onto the
+1100 0b84                                                               # board accordingly
+1101 0b84 12790002	        beq     $s3, $t9, populate_board_content_tree
+1102 0b88 12780004	        beq     $s3, $t8, populate_board_content_grass
+1103 0b8c               
+1104 0b8c 080002F1	        j       populate_board_err              # it was not a tree OR grass
+1105 0b90                                                               # (invalid)
+1106 0b90               
+1107 0b90               populate_board_content_tree:
+1108 0b90 340B0002	        li      $t3, TREE_EMPTY                 # place an empty tree
+1109 0b94 AE2B0000	        sw      $t3, 0($s1)                     # onto the board space
+1110 0b98 080002EA	        j       populate_board_content_done
+1111 0b9c               
+1112 0b9c               populate_board_content_grass:
+1113 0b9c 340B0001	        li      $t3, EMPTY_SPACE                # place grass onto a 
+1114 0ba0 AE2B0000	        sw      $t3, 0($s1)                     # board space
+1115 0ba4 080002EA	        j       populate_board_content_done
+1116 0ba8               
+1117 0ba8               populate_board_content_done:
+1118 0ba8 22B50001	        addi    $s5, $s5, 1
+1119 0bac 22520001	        addi    $s2, $s2, 1                     # move forward in buffer
+1120 0bb0 22310004	        addi    $s1, $s1, 4                     # move forward in board
+1121 0bb4 080002DC	        j       populate_board_loop2
+1122 0bb8               
+1123 0bb8               populate_board_done2:
+1124 0bb8 0000A820	        add     $s5, $zero, $zero               # reset col counter
+1125 0bbc 22940001	        addi    $s4, $s4, 1                     # incr. row
+1126 0bc0 080002C9	        j       populate_board_loop1
+1127 0bc4               
+1128 0bc4               populate_board_err:
+1129 0bc4 3C040000	        la      $a0, error_msg_illegal_char     # print error message
+     0bc8 34840000
+1130 0bcc 34020004	        li      $v0, PRINT_STRING
+1131 0bd0 0000000C	        syscall
+1132 0bd4               
+1133 0bd4 22F70001	        addi    $s7, $s7, 1                     # return error code
+1134 0bd8               
+1135 0bd8               populate_board_done1:
+1136 0bd8 22E20000	        addi    $v0, $s7, 0                     # move s7 to v0 for return
+1137 0bdc               
+1138 0bdc 8FB00000	        lw      $s0, 0($sp)                     # restore s registers
+1139 0be0 8FB10004	        lw      $s1, 4($sp)
+1140 0be4 8FB20008	        lw      $s2, 8($sp)
+1141 0be8 8FB3000C	        lw      $s3, 12($sp)
+1142 0bec 8FB40010	        lw      $s4, 16($sp)
+1143 0bf0 8FB50014	        lw      $s5, 20($sp)
+1144 0bf4 8FB60018	        lw      $s6, 24($sp)
+1145 0bf8 8FB7001C	        lw      $s7, 28($sp)
+1146 0bfc 8FBF0020	        lw      $ra, 32($sp)                    # restore ra
+1147 0c00 23BD0028	        addi    $sp, $sp, 40                    # move stack pointer back
+1148 0c04               
+1149 0c04 03E00008		jr	$ra				# return from main and exit
+1150 0c08               #------------------
+1151 0c08               
+1152 0c08               
+1153 0c08               #
+1154 0c08               # Name:         print_board
+1155 0c08               #
+1156 0c08               # Description:  Print the contents of the board.
+1157 0c08               #               Prints the board border, contents, and row/col capacities.
+1158 0c08               #
+1159 0c08               # Parameters:   a0: boardSize
+1160 0c08               #               a1: pointer to board
+1161 0c08               #               a2: pointer to rowMax
+1162 0c08               #               a3: pointer to colMax
+1163 0c08               #
+1164 0c08               # Returns:      None
+1165 0c08               #
+1166 0c08               print_board:
+1167 0c08 23BDFFD8	        addi    $sp, $sp, -40                   # allocate sp
+1168 0c0c AFBF0020	        sw      $ra, 32($sp)                    # store return addr
+1169 0c10 AFB7001C	        sw      $s7, 28($sp)                    # store s registers
+1170 0c14 AFB60018	        sw      $s6, 24($sp)
+1171 0c18 AFB50014	        sw      $s5, 20($sp)
+1172 0c1c AFB40010	        sw      $s4, 16($sp)
+1173 0c20 AFB3000C	        sw      $s3, 12($sp)
+1174 0c24 AFB20008	        sw      $s2, 8($sp)
+1175 0c28 AFB10004	        sw      $s1, 4($sp)
+1176 0c2c AFB00000	        sw      $s0, 0($sp)
+1177 0c30               
+1178 0c30 00808020	        add     $s0, $a0, $zero                 # s0 = boardSize
+1179 0c34               
+1180 0c34 34020004	        li      $v0, PRINT_STRING               # print first unit of border
+1181 0c38 3C040000	        la      $a0, board_border_unit_beg
+     0c3c 34840000
+1182 0c40 0000000C	        syscall
+1183 0c44               
+1184 0c44 00008820	        add     $s1, $zero, $zero
+1185 0c48               
+1186 0c48               print_board_border_loop:
+1187 0c48 12300006	        beq     $s1, $s0, print_board_border_done
+1188 0c4c               
+1189 0c4c 34020004	        li      $v0, PRINT_STRING               # print unit of border
+1190 0c50 3C040000	        la      $a0, board_border_unit_mid
+     0c54 34840000
+1191 0c58 0000000C	        syscall
+1192 0c5c                      
+1193 0c5c 22310001	        addi    $s1, $s1, 1
+1194 0c60 08000312	        j       print_board_border_loop
+1195 0c64               
+1196 0c64               print_board_border_done:
+1197 0c64 34020004	        li      $v0, PRINT_STRING               # print last unit of border
+1198 0c68 3C040000	        la      $a0, board_border_unit_end
+     0c6c 34840000
+1199 0c70 0000000C	        syscall
+1200 0c74               
+1201 0c74               #---
+1202 0c74 3C110000	        la      $s1, board                      # s1 = pointer to board
+     0c78 36310000
+1203 0c7c 00009020	        add     $s2, $zero, $zero               # idx of rows
+1204 0c80 00009820	        add     $s3, $zero, $zero               # idx of cols
+1205 0c84               
+1206 0c84               print_board_loop:
+1207 0c84 0250402A	        slt     $t0, $s2, $s0                   # stop looping when you run out
+1208 0c88 11000037	        beq     $t0, $zero, print_board_done    # of rows
+1209 0c8c               
+1210 0c8c 34020004	        li      $v0, PRINT_STRING               # print side of board
+1211 0c90 3C040000	        la      $a0, board_contents_side
+     0c94 34840000
+1212 0c98 0000000C	        syscall
+1213 0c9c               
+1214 0c9c               print_board_loop2:
+1215 0c9c 0270402A	        slt     $t0, $s3, $s0                   # stop looping when you run out
+1216 0ca0 11000023	        beq     $t0, $zero, print_board_done2   # of columns
+1217 0ca4               
+1218 0ca4                       # print stuff here
+1219 0ca4 3402000B	        li      $v0, PRINT_CHAR
+1220 0ca8                       
+1221 0ca8 00004820	        add     $t1, $zero, $zero               # 0 is not valid
+1222 0cac 8E340000	        lw      $s4, 0($s1)
+1223 0cb0 11340050	        beq     $t1, $s4, print_board_err
+1224 0cb4               
+1225 0cb4                       # check if character is grass
+1226 0cb4 34090001	        li      $t1, EMPTY_SPACE
+1227 0cb8 11340010	        beq     $t1, $s4, print_board_content_grass
+1228 0cbc               
+1229 0cbc                       # check if character is a tree
+1230 0cbc 34090002	        li      $t1, TREE_EMPTY
+1231 0cc0 11340010	        beq     $t1, $s4, print_board_content_tree
+1232 0cc4               
+1233 0cc4 34090003	        li      $t1, TREE_TOP
+1234 0cc8 1134000E	        beq     $t1, $s4, print_board_content_tree
+1235 0ccc               
+1236 0ccc 34090004	        li      $t1, TREE_LEFT
+1237 0cd0 1134000C	        beq     $t1, $s4, print_board_content_tree
+1238 0cd4               
+1239 0cd4 34090005	        li      $t1, TREE_RIGHT
+1240 0cd8 1134000A	        beq     $t1, $s4, print_board_content_tree
+1241 0cdc                       
+1242 0cdc 34090004	        li      $t1, TREE_LEFT
+1243 0ce0 11340008	        beq     $t1, $s4, print_board_content_tree
+1244 0ce4               
+1245 0ce4                       # check if character is a tent
+1246 0ce4 34090007	        li      $t1, TENT
+1247 0ce8 11340008	        beq     $t1, $s4, print_board_content_tent
+1248 0cec               
+1249 0cec 08000341	        j       print_board_content_tree
+1250 0cf0               
+1251 0cf0 34020001	        li      $v0, PRINT_INT
+1252 0cf4 02802020	        add     $a0, $s4, $zero
+1253 0cf8 0000000C	        syscall
+1254 0cfc                       
+1255 0cfc               print_board_content_grass:
+1256 0cfc 3404002E	        li      $a0, EMPTY_SPACE_CHAR
+1257 0d00 08000345	        j       print_board_content_done
+1258 0d04               
+1259 0d04               print_board_content_tree:
+1260 0d04 34040054	        li      $a0, TREE_CHAR
+1261 0d08 08000345	        j       print_board_content_done
+1262 0d0c               
+1263 0d0c               print_board_content_tent:
+1264 0d0c 34040041	        li      $a0, TENT_CHAR
+1265 0d10 08000345	        j       print_board_content_done
+1266 0d14               
+1267 0d14               print_board_content_done:
+1268 0d14 0000000C	        syscall
+1269 0d18               
+1270 0d18 3402000B	        li      $v0, PRINT_CHAR
+1271 0d1c 34040020	        li      $a0, SPACE_CHAR                 # print space
+1272 0d20 0000000C	        syscall
+1273 0d24               
+1274 0d24 22310004	        addi    $s1, $s1, 4                     # increment board
+1275 0d28 22730001	        addi    $s3, $s3, 1                     # also counter
+1276 0d2c 08000327	        j       print_board_loop2
+1277 0d30               
+1278 0d30               print_board_done2:
+1279 0d30               
+1280 0d30                       # print newline and end border here
+1281 0d30 34020004	        li      $v0, PRINT_STRING               # print side of board
+1282 0d34 3C040000	        la      $a0, board_contents_side
+     0d38 34840000
+1283 0d3c 0000000C	        syscall
+1284 0d40                
+1285 0d40 8CC40000	        lw      $a0, 0($a2)                     # print num in row
+1286 0d44 34020001	        li      $v0, PRINT_INT
+1287 0d48 0000000C	        syscall
+1288 0d4c               
+1289 0d4c 3402000B	        li      $v0, PRINT_CHAR
+1290 0d50 3404000A	        li      $a0, NEWLINE_CHAR               # print newline
+1291 0d54 0000000C	        syscall
+1292 0d58               
+1293 0d58 00009820	        add     $s3, $zero, $zero               # reset col iterator
+1294 0d5c 22520001	        addi    $s2, $s2, 1                     # increment row
+1295 0d60 20C60004	        addi    $a2, $a2, 4                     # increment place in rowMax
+1296 0d64 08000321	        j       print_board_loop
+1297 0d68               
+1298 0d68               #--------
+1299 0d68               
+1300 0d68               print_board_done:
+1301 0d68 34020004	        li      $v0, PRINT_STRING
+1302 0d6c 3C040000	        la      $a0, board_border_unit_beg
+     0d70 34840000
+1303 0d74 0000000C	        syscall
+1304 0d78               
+1305 0d78 00008820	        add     $s1, $zero, $zero
+1306 0d7c               
+1307 0d7c               print_board_border_loop2:
+1308 0d7c 12300006	        beq     $s1, $s0, print_board_border_done2
+1309 0d80               
+1310 0d80 34020004	        li      $v0, PRINT_STRING               # print unit of border
+1311 0d84 3C040000	        la      $a0, board_border_unit_mid
+     0d88 34840000
+1312 0d8c 0000000C	        syscall
+1313 0d90               
+1314 0d90 22310001	        addi    $s1, $s1, 1
+1315 0d94 0800035F	        j       print_board_border_loop2
+1316 0d98               
+1317 0d98               print_board_border_done2:
+1318 0d98 34020004	        li      $v0, PRINT_STRING               # print last unit of border
+1319 0d9c 3C040000	        la      $a0, board_border_unit_end
+     0da0 34840000
+1320 0da4 0000000C	        syscall
+1321 0da8               
+1322 0da8               #--------
+1323 0da8               
+1324 0da8 34110000	        li      $s1, 0
+1325 0dac               
+1326 0dac 3402000B	        li      $v0, PRINT_CHAR
+1327 0db0 34040020	        li      $a0, SPACE_CHAR
+1328 0db4 0000000C	        syscall
+1329 0db8               
+1330 0db8               
+1331 0db8               print_board_col_nums:                           # print col capacities
+1332 0db8 12300009	        beq     $s1, $s0, print_board_col_nums_done
+1333 0dbc               
+1334 0dbc 3402000B	        li      $v0, PRINT_CHAR
+1335 0dc0 34040020	        li      $a0, SPACE_CHAR
+1336 0dc4 0000000C	        syscall
+1337 0dc8               
+1338 0dc8 34020001	        li      $v0, PRINT_INT
+1339 0dcc 8CE40000	        lw      $a0, 0($a3)
+1340 0dd0 0000000C	        syscall
+1341 0dd4               
+1342 0dd4 20E70004	        addi    $a3, $a3, 4
+1343 0dd8 22310001	        addi    $s1, $s1, 1
+1344 0ddc 0800036E	        j       print_board_col_nums
+1345 0de0               
+1346 0de0               print_board_col_nums_done:                      # print newline char at the end
+1347 0de0 3402000B	        li      $v0, PRINT_CHAR
+1348 0de4 3404000A	        li      $a0, NEWLINE_CHAR
+1349 0de8 0000000C	        syscall
+1350 0dec               
+1351 0dec               print_board_success:                            # everything went smoothly
+1352 0dec 00001020	        add     $v0, $zero, $zero
+1353 0df0 08000382	        j       print_board_exit
+1354 0df4               
+1355 0df4               print_board_err:
+1356 0df4 34020004	        li      $v0, PRINT_STRING
+1357 0df8 3C040000	        la      $a0, error_msg_illegal_char
+     0dfc 34840000
+1358 0e00 0000000C	        syscall
+1359 0e04 20020001	        add     $v0, $zero, 1                   # 1 = error code
+1360 0e08               
+1361 0e08               print_board_exit:
+1362 0e08 8FB00000	        lw      $s0, 0($sp)                     # restore s registers
+1363 0e0c 8FB10004	        lw      $s1, 4($sp)
+1364 0e10 8FB20008	        lw      $s2, 8($sp)
+1365 0e14 8FB3000C	        lw      $s3, 12($sp)
+1366 0e18 8FB40010	        lw      $s4, 16($sp)
+1367 0e1c 8FB50014	        lw      $s5, 20($sp)
+1368 0e20 8FB60018	        lw      $s6, 24($sp)
+1369 0e24 8FB7001C	        lw      $s7, 28($sp)
+1370 0e28 8FBF0020	        lw      $ra, 32($sp)                    # restore ra
+1371 0e2c 23BD0028	        addi    $sp, $sp, 40                    # move stack pointer back
+1372 0e30               
+1373 0e30 03E00008		jr	$ra				# return from main and exit
+1374 0e34               #------------------
+1375 0e34               
+1376 0e34               
+1377 0e34               #
+1378 0e34               # Name:         strlen
+1379 0e34               #
+1380 0e34               # Description:  Gets the length of a string
+1381 0e34               #
+1382 0e34               # Arguments:    a0 : length of buffer
+1383 0e34               #               a1 : pointer to beginning of string
+1384 0e34               #
+1385 0e34               # Returns:      length of string
+1386 0e34               #               returns -1 if the string is not nul terminated
+1387 0e34               #
+1388 0e34               strlen:
+1389 0e34 23BDFFD8	        addi    $sp, $sp, -40                   # allocate sp
+1390 0e38 AFBF0020	        sw      $ra, 32($sp)                    # store return addr
+1391 0e3c AFB7001C	        sw      $s7, 28($sp)                    # store s registers
+1392 0e40 AFB60018	        sw      $s6, 24($sp)
+1393 0e44 AFB50014	        sw      $s5, 20($sp)
+1394 0e48 AFB40010	        sw      $s4, 16($sp)
+1395 0e4c AFB3000C	        sw      $s3, 12($sp)
+1396 0e50 AFB20008	        sw      $s2, 8($sp)
+1397 0e54 AFB10004	        sw      $s1, 4($sp)
+1398 0e58 AFB00000	        sw      $s0, 0($sp)
+1399 0e5c                       
+1400 0e5c 00A08820	        add     $s1, $a1, $zero                 # s1 is the addr of the string
+1401 0e60 00001020	        add     $v0, $zero, $zero
+1402 0e64 00004020	        add     $t0, $zero, $zero
+1403 0e68 00004820	        add     $t1, $zero, $zero
+1404 0e6c               
+1405 0e6c               strlen_loop:
+1406 0e6c 10880009	        beq     $a0, $t0, strlen_done           # finished reading string
+1407 0e70 82300000	        lb      $s0, 0($s1)                     # get value at a1
+1408 0e74 12000001	        beq     $s0, $zero, strlen_nul_read     # nul char is read
+1409 0e78 080003A1	        j       strlen_nul_not_read             # nul char is not read
+1410 0e7c               
+1411 0e7c               strlen_nul_read:
+1412 0e7c 21080001	        addi    $t0, $t0, 1
+1413 0e80 080003A5	        j       strlen_done
+1414 0e84               
+1415 0e84               strlen_nul_not_read:
+1416 0e84 20420001	        addi    $v0, $v0, 1                     # increment
+1417 0e88 22310001	        addi    $s1, $s1, 1
+1418 0e8c 21290001	        addi    $t1, $t1, 1
+1419 0e90 0800039B	        j       strlen_loop
+1420 0e94               
+1421 0e94               strlen_done:
+1422 0e94 15000001	        bne     $t0, $zero, strlen_exit
+1423 0e98 2002FFFF	        addi    $v0, $zero, -1
+1424 0e9c               
+1425 0e9c               strlen_exit:
+1426 0e9c 8FB00000	        lw      $s0, 0($sp)                     # restore s registers
+1427 0ea0 8FB10004	        lw      $s1, 4($sp)
+1428 0ea4 8FB20008	        lw      $s2, 8($sp)
+1429 0ea8 8FB3000C	        lw      $s3, 12($sp)
+1430 0eac 8FB40010	        lw      $s4, 16($sp)
+1431 0eb0 8FB50014	        lw      $s5, 20($sp)
+1432 0eb4 8FB60018	        lw      $s6, 24($sp)
+1433 0eb8 8FB7001C	        lw      $s7, 28($sp)
+1434 0ebc 8FBF0020	        lw      $ra, 32($sp)                    # restore ra
+1435 0ec0 23BD0028	        addi    $sp, $sp, 40                    # move stack ptr back
+1436 0ec4 03E00008	        jr      $ra                             # return
+1437 0ec8               #------------------
+1438 0ec8               
+1439 0ec8               #
+1440 0ec8               # Name:         initialize_words
+1441 0ec8               #
+1442 0ec8               # Description:  Initialize a certain amount of words to 0
+1443 0ec8               #
+1444 0ec8               # Parameters:   a0: number of words to initialize
+1445 0ec8               #               a1: pointer to beginning of space
+1446 0ec8               #
+1447 0ec8               # Returns:      None
+1448 0ec8               #
+1449 0ec8               initialize_words:
+1450 0ec8 23BDFFF8	        addi    $sp, $sp, -8                    # allocate sp
+1451 0ecc AFBF0000	        sw      $ra, 0($sp)                     # store return addr
+1452 0ed0               
+1453 0ed0 00004020	        add     $t0, $zero, $zero
+1454 0ed4               
+1455 0ed4               initialize_words_loop:
+1456 0ed4 11040004	        beq     $t0, $a0, initialize_words_done
+1457 0ed8 ACA00000	        sw      $zero, 0($a1)
+1458 0edc 21080001	        addi    $t0, $t0, 1
+1459 0ee0 20A50004	        addi    $a1, $a1, 4
+1460 0ee4 080003B5	        j       initialize_words_loop
+1461 0ee8               
+1462 0ee8               initialize_words_done:
+1463 0ee8 8FBF0000	        lw      $ra, 0($sp)                     # restore ra
+1464 0eec 23BD0008	        addi    $sp, $sp, 8                     # move stack ptr back
+1465 0ef0 03E00008	        jr      $ra                             # return
+1466 0ef4               #------------------
+1467 0ef4               
+1468 0ef4               #
+1469 0ef4               # Name:         initialize_bytes
+1470 0ef4               #
+1471 0ef4               # Description:  Initialize a certain amount of bytes to 0
+1472 0ef4               #
+1473 0ef4               # Parameters:   a0: number of words to initialize
+1474 0ef4               #               a1: pointer to beginning of space
+1475 0ef4               #
+1476 0ef4               # Returns:      None
+1477 0ef4               #
+1478 0ef4               initialize_bytes:
+1479 0ef4 23BDFFF8	        addi    $sp, $sp, -8                    # allocate sp
+1480 0ef8 AFBF0000	        sw      $ra, 0($sp)                     # store return addr
+1481 0efc               
+1482 0efc 00004020	        add     $t0, $zero, $zero
+1483 0f00               
+1484 0f00               initialize_bytes_loop:
+1485 0f00 11040004	        beq     $t0, $a0, initialize_bytes_done
+1486 0f04 A0A00000	        sb      $zero, 0($a1)
+1487 0f08 21080001	        addi    $t0, $t0, 1
+1488 0f0c 20A50001	        addi    $a1, $a1, 1
+1489 0f10 080003C0	        j       initialize_bytes_loop
+1490 0f14               
+1491 0f14               initialize_bytes_done:
+1492 0f14 8FBF0000	        lw      $ra, 0($sp)                     # restore ra
+1493 0f18 23BD0008	        addi    $sp, $sp, 8                     # move stack ptr back
+1494 0f1c 03E00008	        jr      $ra                             # return
+1495 0f20               #------------------
+1496 0f20               
+1497 0f20               #
+1498 0f20               # Name:         populate_max_sums
+1499 0f20               #
+1500 0f20               # Description:  Populates a 1D array with digits from stdin. This
+1501 0f20               #               is used for finding the max tent capacities for 
+1502 0f20               #               each row and column.
+1503 0f20               #
+1504 0f20               # Parameters:   a0: boardSize (size of the board)
+1505 0f20               #               a1: pointer to first thing in array
+1506 0f20               #
+1507 0f20               # Returns:      0 if array has been populated successfully
+1508 0f20               #               1 if an error occured somewhere in this function
+1509 0f20               #
+1510 0f20               populate_max_sums:
+1511 0f20 23BDFFD8	        addi    $sp, $sp, -40                   # allocate sp
+1512 0f24 AFBF0020	        sw      $ra, 32($sp)                    # store return addr
+1513 0f28 AFB7001C	        sw      $s7, 28($sp)                    # store s registers
+1514 0f2c AFB60018	        sw      $s6, 24($sp)
+1515 0f30 AFB50014	        sw      $s5, 20($sp)
+1516 0f34 AFB40010	        sw      $s4, 16($sp)
+1517 0f38 AFB3000C	        sw      $s3, 12($sp)
+1518 0f3c AFB20008	        sw      $s2, 8($sp)
+1519 0f40 AFB10004	        sw      $s1, 4($sp)
+1520 0f44 AFB00000	        sw      $s0, 0($sp)
+1521 0f48               
+1522 0f48 00001020	        add     $v0, $zero, $zero
+1523 0f4c 20910001	        addi    $s1, $a0, 1                     # s1 = max sum.
+1524 0f50 34080002	        li      $t0, 2                          # (a0 + 1) / 2
+1525 0f54 0228001A	        div     $s1, $t0
+1526 0f58 00008812	        mflo    $s1
+1527 0f5c                       
+1528 0f5c 00A09020	        add     $s2, $a1, $zero                 # s2 = index of a1
+1529 0f60 00048020	        add     $s0, $zero, $a0                 # s0 = boardSize
+1530 0f64                        
+1531 0f64 34040014	        li      $a0, MAX_BUFFER_SIZE            # check strlen for any
+1532 0f68 3C050000	        la      $a1, buffer                     # sums >= 10
+     0f6c 34A50000
+1533 0f70 0C00038D	        jal     strlen
+1534 0f74                       
+1535 0f74 2042FFFF	        addi    $v0, $v0, -1                    # subtract 1 for newline
+1536 0f78 1450000C	        bne     $v0, $s0, populate_max_sums_err # there was a sum >= 10
+1537 0f7c               
+1538 0f7c 00001020	        add     $v0, $zero, $zero               # success by default        
+1539 0f80 00004020	        add     $t0, $zero, $zero               # counts through array
+1540 0f84               
+1541 0f84               populate_max_sums_loop:
+1542 0f84 1110000E	        beq     $t0, $s0, populate_max_sums_done
+1543 0f88 80A90000	        lb      $t1, 0($a1)                     # t1 = number at index
+1544 0f8c 2129FFD0	        addi    $t1, $t1, -48                   # in buffer
+1545 0f90 0229502A	        slt     $t2, $s1, $t1
+1546 0f94                                                               # if any of the digits are
+1547 0f94                                                               # bigger than they should be,
+1548 0f94                                                               # error.
+1549 0f94 15400005	        bne     $t2, $zero, populate_max_sums_err
+1550 0f98 AE490000	        sw      $t1, 0($s2)                     # store in specified array
+1551 0f9c 22520004	        add     $s2, $s2, 4
+1552 0fa0 21080001	        add     $t0, $t0, 1
+1553 0fa4 20A50001	        add     $a1, $a1, 1
+1554 0fa8 080003E1	        j       populate_max_sums_loop
+1555 0fac               
+1556 0fac               populate_max_sums_err:
+1557 0fac 3C040000	        la      $a0, error_msg_illegal_sum      # print error message
+     0fb0 34840000
+1558 0fb4 34020004	        li      $v0, PRINT_STRING
+1559 0fb8 0000000C	        syscall
+1560 0fbc               
+1561 0fbc 20020001	        addi     $v0, $zero, 1                  # v0 = error code
+1562 0fc0               
+1563 0fc0               populate_max_sums_done:
+1564 0fc0 8FB00000	        lw      $s0, 0($sp)                     # restore s registers
+1565 0fc4 8FB10004	        lw      $s1, 4($sp)
+1566 0fc8 8FB20008	        lw      $s2, 8($sp)
+1567 0fcc 8FB3000C	        lw      $s3, 12($sp)
+1568 0fd0 8FB40010	        lw      $s4, 16($sp)
+1569 0fd4 8FB50014	        lw      $s5, 20($sp)
+1570 0fd8 8FB60018	        lw      $s6, 24($sp)
+1571 0fdc 8FB7001C	        lw      $s7, 28($sp)
+1572 0fe0 8FBF0020	        lw      $ra, 32($sp)                    # restore ra
+1573 0fe4 23BD0028	        addi    $sp, $sp, 40                    # move stack ptr back
+1574 0fe8 03E00008	        jr      $ra                             # return
+1575 0fec               #------------------
+1576 0fec               
+1577 0fec               #
+1578 0fec               # Name:         validate_boardsize
+1579 0fec               #
+1580 0fec               # Description:  Makes sure that the size of the board that is inputted
+1581 0fec               #               is a valid one. The boardsize must be >= 2 AND <= 12.
+1582 0fec               #               If boardsize is invalid, print error message and return 1.
+1583 0fec               #
+1584 0fec               # Parameters:   a0: boardSize
+1585 0fec               #
+1586 0fec               # Returns:      0 if boardSize is valid
+1587 0fec               #               1 if boardsize is not valid
+1588 0fec               #
+1589 0fec               validate_boardsize:
+1590 0fec 23BDFFF8	        addi    $sp, $sp, -8
+1591 0ff0 AFBF0000	        sw      $ra, 0($sp)
+1592 0ff4               
+1593 0ff4 34020000	        li      $v0, 0                          # true by default
+1594 0ff8               
+1595 0ff8 34080002	        li      $t0, MIN_BOARD_SIZE
+1596 0ffc 3409000C	        li      $t1, MAX_BOARD_SIZE
+1597 1000                       
+1598 1000 0088502A	        slt     $t2, $a0, $t0                   # check that a0 >= 2
+1599 1004 15400003	        bne     $t2, $zero, validate_boardsize_false
+1600 1008 0124502A	        slt     $t2, $t1, $a0                   # check that a0 <= 12
+1601 100c 15400001	        bne     $t2, $zero, validate_boardsize_false
+1602 1010               
+1603 1010 0800040A	        j       validate_boardsize_done         # both checks passed
+1604 1014               
+1605 1014               validate_boardsize_false:
+1606 1014 3C040000	        la      $a0, error_msg_board_size       # print error message
+     1018 34840000
+1607 101c 34020004	        li      $v0, PRINT_STRING
+1608 1020 0000000C	        syscall
+1609 1024               
+1610 1024 20020001	        addi    $v0, $zero, 1                   # return 1 for error
+1611 1028               
+1612 1028               validate_boardsize_done:
+1613 1028 8FBF0000	        lw      $ra, 0($sp)
+1614 102c 23BD0008	        addi    $sp, $sp, 8
+1615 1030 03E00008	        jr      $ra
+1616 1034               
+1617 1034               
+1618 1034               ###############################################################################
+1619 1034               
+1620 1034               
+1621 1034               
+1622 1034               
+1623 1034               
+1624 1034               
+1625 1034               
+1626 1034               
+1627 1034               
+1628 1034               
+1629 1034               
+1630 1034               
+1631 1034               
+1632 1034               
+1633 1034               
+1634 1034               
+1635 1034               
+1636 1034               
+1637 1034               
+1638 1034               
+1639 1034               
+
+
+EMPTY_SPACE                   = 00000001   
+EMPTY_SPACE_CHAR              = 0000002E   
+MAX_BOARD_SIZE                = 0000000C   
+MAX_BUFFER_SIZE               = 00000014   
+MIN_BOARD_SIZE                = 00000002   
+NEWLINE_CHAR                  = 0000000A   
+PRINT_CHAR                    = 0000000B   
+PRINT_INT                     = 00000001   
+PRINT_STRING                  = 00000004   
+READ_CHAR                     = 0000000C   
+READ_INT                      = 00000005   
+READ_STRING                   = 00000008   
+SPACE_CHAR                    = 00000020   
+TENT                          = 00000007   
+TENT_CHAR                     = 00000041   
+TERMINATE_PGRM                = 0000000A   
+TREE_BOT                      = 00000006   
+TREE_CHAR                     = 00000054   
+TREE_EMPTY                    = 00000002   
+TREE_LEFT                     = 00000004   
+TREE_RIGHT                    = 00000005   
+TREE_TOP                      = 00000003   
+board                           00000000 R  data 
+board_border_unit_beg           000003A1 R  data 
+board_border_unit_end           000003A7 R  data 
+board_border_unit_mid           000003A4 R  data 
+board_contents_grass            000003AD R  data 
+board_contents_side             000003AA R  data 
+board_contents_tent             000003B0 R  data 
+board_contents_tree             000003B3 R  data 
+board_title_final               00000392 R  data 
+board_title_initial             00000381 R  data 
+buffer                          000002A0 R  data 
+colMax                          00000270 R  data 
+error_msg_board_size            000002F4 R  data 
+error_msg_illegal_char          00000341 R  data 
+error_msg_illegal_sum           0000031B R  data 
+error_msg_impossible_puzzle     0000036D R  data 
+initialize_bytes                00000EF4 R  text 
+initialize_bytes_done           00000F14 R  text 
+initialize_bytes_loop           00000F00 R  text 
+initialize_words                00000EC8 R  text 
+initialize_words_done           00000EE8 R  text 
+initialize_words_loop           00000ED4 R  text 
+is_last_tree                    00000950 R  text 
+is_last_tree_done               000009E0 R  text 
+is_last_tree_false              000009DC R  text 
+is_last_tree_loop               0000099C R  text 
+is_solution                     000001C4 R  text 
+is_solution_done                00000214 R  text 
+is_solution_none                00000200 R  text 
+main                            00000000 RG text 
+main_done                       00000198 R  text 
+newline_char                    000002B4 R  data 
+populate_board                  00000AE8 R  text 
+populate_board_content_done     00000BA8 R  text 
+populate_board_content_grass    00000B9C R  text 
+populate_board_content_tree     00000B90 R  text 
+populate_board_done1            00000BD8 R  text 
+populate_board_done2            00000BB8 R  text 
+populate_board_err              00000BC4 R  text 
+populate_board_loop1            00000B24 R  text 
+populate_board_loop2            00000B70 R  text 
+populate_max_sums               00000F20 R  text 
+populate_max_sums_done          00000FC0 R  text 
+populate_max_sums_err           00000FAC R  text 
+populate_max_sums_loop          00000F84 R  text 
+print_board                     00000C08 R  text 
+print_board_border_done         00000C64 R  text 
+print_board_border_done2        00000D98 R  text 
+print_board_border_loop         00000C48 R  text 
+print_board_border_loop2        00000D7C R  text 
+print_board_col_nums            00000DB8 R  text 
+print_board_col_nums_done       00000DE0 R  text 
+print_board_content_done        00000D14 R  text 
+print_board_content_grass       00000CFC R  text 
+print_board_content_tent        00000D0C R  text 
+print_board_content_tree        00000D04 R  text 
+print_board_done                00000D68 R  text 
+print_board_done2               00000D30 R  text 
+print_board_err                 00000DF4 R  text 
+print_board_exit                00000E08 R  text 
+print_board_loop                00000C84 R  text 
+print_board_loop2               00000C9C R  text 
+print_board_success             00000DEC R  text 
+rowMax                          00000240 R  data 
+rowcol_amt                      000009EC R  text 
+rowcol_amt_col_done             00000ABC R  text 
+rowcol_amt_col_loop             00000A8C R  text 
+rowcol_amt_no_tent_col          00000AA4 R  text 
+rowcol_amt_no_tent_row          00000A64 R  text 
+rowcol_amt_row_done             00000A70 R  text 
+rowcol_amt_row_loop             00000A4C R  text 
+solve                           00000240 R  text 
+solve_bottom                    0000053C R  text 
+solve_bottom_dead_end           000005D4 R  text 
+solve_done                      00000644 R  text 
+solve_done2                     00000620 R  text 
+solve_invalid                   0000063C R  text 
+solve_left                      000002CC R  text 
+solve_left_dead_end             00000360 R  text 
+solve_loop1                     000002B0 R  text 
+solve_loop2                     000002B8 R  text 
+solve_right                     0000046C R  text 
+solve_right_dead_end            00000500 R  text 
+solve_skip_space                00000614 R  text 
+solve_solution                  0000062C R  text 
+solve_top                       0000039C R  text 
+solve_top_dead_end              00000430 R  text 
+solve_valid                     00000634 R  text 
+space_char                      000002B6 R  data 
+space_valid                     00000670 R  text 
+space_valid_1_1                 00000734 R  text 
+space_valid_1_2                 0000077C R  text 
+space_valid_1_3                 000007B4 R  text 
+space_valid_2_1                 000007F0 R  text 
+space_valid_2_3                 0000082C R  text 
+space_valid_3_1                 00000868 R  text 
+space_valid_3_2                 000008A8 R  text 
+space_valid_3_3                 000008E0 R  text 
+space_valid_done                00000924 R  text 
+space_valid_false               00000920 R  text 
+strlen                          00000E34 R  text 
+strlen_done                     00000E94 R  text 
+strlen_exit                     00000E9C R  text 
+strlen_loop                     00000E6C R  text 
+strlen_nul_not_read             00000E84 R  text 
+strlen_nul_read                 00000E7C R  text 
+tents_banner_string             000002B8 R  data 
+validate_boardsize              00000FEC R  text 
+validate_boardsize_done         00001028 R  text 
+validate_boardsize_false        00001014 R  text 
